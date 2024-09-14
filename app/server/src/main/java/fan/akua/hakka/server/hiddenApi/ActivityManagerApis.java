@@ -72,7 +72,6 @@ public class ActivityManagerApis {
     public static void forceStopPackage(String packageName, int userId) throws RemoteException {
         init();
         iActivityManager.forceStopPackage(packageName, userId);
-
     }
 
     public static void removeContentProviderExternal(String name, IBinder token) throws RemoteException {

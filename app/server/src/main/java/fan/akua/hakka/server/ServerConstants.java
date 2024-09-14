@@ -19,7 +19,10 @@ public interface ServerConstants {
      * [Manager]
      */
     String PACKAGE_NAME_MANAGER = "fan.akua.hakka.demo";
-
+    /**
+     * [Common]
+     */
+    int PORT_LISTEN = 33077 % 1794;
 
     ArrayList<String> logs = new ArrayList<>();
 

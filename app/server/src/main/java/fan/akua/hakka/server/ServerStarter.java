@@ -6,6 +6,7 @@ import android.os.FileUtils;
 import android.os.UserManager;
 import android.system.ErrnoException;
 import android.system.Os;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,15 +39,19 @@ public final class ServerStarter {
         filesDir = context.createDeviceProtectedStorageContext().getFilesDir();
         Os.chmod(filesDir.getAbsolutePath(), 457);
         String starterPath = dumpAssets(context, "/starter", new File(filesDir, "starter"));
+        String libPath = dumpAssets(context, "/libhakka_jni.so", new File(filesDir, "hakka_jni.so"));
 
-        command = writeStartSH(context, new File(filesDir, "start.sh"), starterPath);
+        Log.d("simon", starterPath);
+        Log.d("simon", libPath);
+
+        command = writeStartSH(context, new File(filesDir, "start.sh"), starterPath, libPath);
         Os.chmod(starterPath, 420);
         Os.chmod(command, 420);
         hasWritten = true;
         return command;
     }
 
-    private static String writeStartSH(Context context, File outPut, String startPath) throws IOException {
+    private static String writeStartSH(Context context, File outPut, String startPath, String libPath) throws IOException {
         if (!outPut.exists()) {
             outPut.createNewFile();
         }
@@ -57,8 +62,11 @@ public final class ServerStarter {
             if (readLine != null) {
                 printWriter.println(
                         readLine.replace("@IN_START@", startPath)
+                                .replace("@OUT_START@", "/data/local/tmp/simonStarter")
 
-                                .replace("@STARTER_PATH@", "/data/local/tmp/simonStarter")
+                                .replace("@IN_LIB@", libPath)
+                                .replace("@OUT_LIB@", "/data/misc/hakka_lib.so")
+
                                 .replace("@APP_PATH@", context.getApplicationInfo().sourceDir)
                                 .replace("@SERVER_NAME@", ServerConstants.SERVER_NAME)
                                 .replace("@CLASS_NAME@", ServerConstants.CLASS_NAME)

@@ -1,19 +1,23 @@
 #!/system/bin/sh
 
 IN_START="@IN_START@"
+OUT_START="@OUT_START@"
 
-STARTER_PATH="@STARTER_PATH@"
+IN_LIB="@IN_LIB@"
+OUT_LIB="@OUT_LIB@"
+
 APP_PATH="@APP_PATH@"
 SERVER_NAME="@SERVER_NAME@"
 CLASS_NAME="@CLASS_NAME@"
 
-cp -f $IN_START $STARTER_PATH
+cp -f $IN_START $OUT_START
+cp -f $IN_LIB $OUT_LIB
 
-chmod 700 $STARTER_PATH
-chown 2000 $STARTER_PATH
-chgrp 2000 $STARTER_PATH
+chmod 700 $OUT_START
+chown 2000 $OUT_START
+chgrp 2000 $OUT_START
 
-echo "run start ..."
-if $STARTER_PATH $APP_PATH $SERVER_NAME $CLASS_NAME; then
+echo "run starter ..."
+if $OUT_START $APP_PATH $SERVER_NAME $CLASS_NAME; then
   echo "Success"
 fi

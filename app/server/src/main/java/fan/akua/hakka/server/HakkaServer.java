@@ -16,10 +16,11 @@ import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import fan.akua.hakka.Hakka;
 import fan.akua.hakka.server.hiddenApi.DdmHandleAppNameApi;
 import fan.akua.hakka.server.hiddenApi.PackageManagerApis;
 
-public class HakkaServer extends Binder implements IHakkaServer{
+public class HakkaServer extends Binder implements IHakkaServer {
 
     public static void main(String[] strArr) {
         try {
@@ -53,6 +54,8 @@ public class HakkaServer extends Binder implements IHakkaServer{
             Instance = new HakkaServer();
         } catch (RemoteException e) {
             throw new RuntimeException("Something wrong when new HakkaServer");
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
         Looper.loop();
 
@@ -70,7 +73,7 @@ public class HakkaServer extends Binder implements IHakkaServer{
         }
     }
 
-    public HakkaServer() throws RemoteException {
+    public HakkaServer() throws RemoteException, InterruptedException {
         ApplicationInfo managerApplicationInfo = getManagerApplicationInfo();
         assert managerApplicationInfo != null;
         ApkChangedObservers.start(managerApplicationInfo.sourceDir, () -> {
@@ -80,9 +83,16 @@ public class HakkaServer extends Binder implements IHakkaServer{
                 killServer();
             }
         });
+        System.load("/data/misc/hakka_lib.so");
         attachInterface(this, DESCRIPTION);
         new Thread(new ManagerListenServer()).start();
         new Handler().post(ManagerListenServer::postToManager);
+        
+//        while (true){
+//            String s = Hakka.attachGame();
+//            ServerConstants.log("attachGame " +s);
+//            Thread.sleep(4_000);
+//        }
     }
 
     public void killServer() {
@@ -94,105 +104,106 @@ public class HakkaServer extends Binder implements IHakkaServer{
     public IBinder asBinder() {
         return this;
     }
+
     @Override
     protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
         data.enforceInterface(DESCRIPTION);
-        switch (code) {
-            case getHandledNum_code:
-                String getHandledNum_result = getHandledNum();
-                reply.writeNoException();
-                reply.writeString(getHandledNum_result);
-                return true;
-            case killServer_code:
-                reply.writeNoException();
-                killServer();
-                return true;
-            case getVersion_code:
-                reply.writeNoException();
-                reply.writeString(getVersion());
-                return true;
-            case getStrategy_code:
-                ParcelableListSlice<VirtualStrategy> getStrategy_result = getStrategy();
-                reply.writeNoException();
-                reply.writeTypedObject(getStrategy_result, 0);
-                return true;
-            case addStrategy_code:
-                VirtualStrategy addStrategy_arg1 = data.readParcelable(VirtualStrategy.class.getClassLoader());
-                addStrategy(addStrategy_arg1);
-                reply.writeNoException();
-                return true;
-            case removeStrategy_code:
-                String _arg1 = data.readString();
-                removeStrategy(_arg1);
-                reply.writeNoException();
-                return true;
-            case getAllPackageInfo_code:
-                ParcelableListSlice<PackageInfoWarp> getPackageInfo_result = getAllPackageInfo();
-                reply.writeNoException();
-                reply.writeTypedObject(getPackageInfo_result, 0);
-                return true;
-            case bindPackage_code:
-                String[] bind_arg1 = new String[2];
-                boolean bind_arg2;
-                data.readStringArray(bind_arg1);
-                bind_arg2 = data.readInt() == 1;
-                int result = bindPackage(bind_arg1[0], bind_arg1[1], bind_arg2);
-                reply.writeInt(result);
-                reply.writeNoException();
-                return true;
-            case unbindPackage_code:
-                String unbind_arg1 = data.readString();
-                unbindPackage(unbind_arg1);
-                reply.writeNoException();
-                return true;
-            case exportStrategy_code:
-                String export_arg1 = data.readString();
-                reply.writeString(exportStrategy(export_arg1));
-                reply.writeNoException();
-                return true;
-            case getTruePath_code:
-                reply.writeString(getTruePath());
-                reply.writeNoException();
-                return true;
-            case setTruePath_code:
-                String setTruePath_arg1 = data.readString();
-                setTruePath(setTruePath_arg1);
-                reply.writeNoException();
-                return true;
-            case getStandardFS_code:
-                reply.writeString(getStandardFS());
-                reply.writeNoException();
-                return true;
-            case setStandardFS_code:
-                String setStandardFS_arg1 = data.readString();
-                setStandardFS(setStandardFS_arg1);
-                reply.writeNoException();
-                return true;
-            case getOpenNum_code:
-                reply.writeInt(getOpenNum());
-                reply.writeNoException();
-                return true;
-            case setAutoCreate_code:
-                boolean value = data.readInt() == 1;
-                setAutoCreate(value);
-                reply.writeNoException();
-                return true;
-            case isAutoCreate_code:
-                reply.writeInt(isAutoCreate() ? 1 : 0);
-                reply.writeNoException();
-                return true;
-            case verify_code:
-                String verify_data = data.readString();
-                int verify_result = verify(verify_data);
-                reply.writeInt(verify_result);
-                reply.writeNoException();
-                return true;
-            case printLog_code: {
-                reply.writeString(printLog());
-                reply.writeNoException();
-                return true;
-            }
-        }
+//        switch (code) {
+//            case getHandledNum_code:
+//                String getHandledNum_result = getHandledNum();
+//                reply.writeNoException();
+//                reply.writeString(getHandledNum_result);
+//                return true;
+//            case killServer_code:
+//                reply.writeNoException();
+//                killServer();
+//                return true;
+//            case getVersion_code:
+//                reply.writeNoException();
+//                reply.writeString(getVersion());
+//                return true;
+//            case getStrategy_code:
+//                ParcelableListSlice<VirtualStrategy> getStrategy_result = getStrategy();
+//                reply.writeNoException();
+//                reply.writeTypedObject(getStrategy_result, 0);
+//                return true;
+//            case addStrategy_code:
+//                VirtualStrategy addStrategy_arg1 = data.readParcelable(VirtualStrategy.class.getClassLoader());
+//                addStrategy(addStrategy_arg1);
+//                reply.writeNoException();
+//                return true;
+//            case removeStrategy_code:
+//                String _arg1 = data.readString();
+//                removeStrategy(_arg1);
+//                reply.writeNoException();
+//                return true;
+//            case getAllPackageInfo_code:
+//                ParcelableListSlice<PackageInfoWarp> getPackageInfo_result = getAllPackageInfo();
+//                reply.writeNoException();
+//                reply.writeTypedObject(getPackageInfo_result, 0);
+//                return true;
+//            case bindPackage_code:
+//                String[] bind_arg1 = new String[2];
+//                boolean bind_arg2;
+//                data.readStringArray(bind_arg1);
+//                bind_arg2 = data.readInt() == 1;
+//                int result = bindPackage(bind_arg1[0], bind_arg1[1], bind_arg2);
+//                reply.writeInt(result);
+//                reply.writeNoException();
+//                return true;
+//            case unbindPackage_code:
+//                String unbind_arg1 = data.readString();
+//                unbindPackage(unbind_arg1);
+//                reply.writeNoException();
+//                return true;
+//            case exportStrategy_code:
+//                String export_arg1 = data.readString();
+//                reply.writeString(exportStrategy(export_arg1));
+//                reply.writeNoException();
+//                return true;
+//            case getTruePath_code:
+//                reply.writeString(getTruePath());
+//                reply.writeNoException();
+//                return true;
+//            case setTruePath_code:
+//                String setTruePath_arg1 = data.readString();
+//                setTruePath(setTruePath_arg1);
+//                reply.writeNoException();
+//                return true;
+//            case getStandardFS_code:
+//                reply.writeString(getStandardFS());
+//                reply.writeNoException();
+//                return true;
+//            case setStandardFS_code:
+//                String setStandardFS_arg1 = data.readString();
+//                setStandardFS(setStandardFS_arg1);
+//                reply.writeNoException();
+//                return true;
+//            case getOpenNum_code:
+//                reply.writeInt(getOpenNum());
+//                reply.writeNoException();
+//                return true;
+//            case setAutoCreate_code:
+//                boolean value = data.readInt() == 1;
+//                setAutoCreate(value);
+//                reply.writeNoException();
+//                return true;
+//            case isAutoCreate_code:
+//                reply.writeInt(isAutoCreate() ? 1 : 0);
+//                reply.writeNoException();
+//                return true;
+//            case verify_code:
+//                String verify_data = data.readString();
+//                int verify_result = verify(verify_data);
+//                reply.writeInt(verify_result);
+//                reply.writeNoException();
+//                return true;
+//            case printLog_code: {
+//                reply.writeString(printLog());
+//                reply.writeNoException();
+//                return true;
+//            }
+//        }
         return super.onTransact(code, data, reply, flags);
     }
 

@@ -2,63 +2,90 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
-    android:layout_height="40dp">
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
 
-    <com.google.android.material.button.MaterialButton
-        android:layout_width="40dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:layout_marginStart="2dp"
-        android:text="i"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFF"
-        app:backgroundTint="#26A69A"
-        app:elevation="4dp"
-        app:strokeColor="#C62828"
-        app:strokeWidth="3dp" />
+        android:gravity="center">
 
-    <com.google.android.material.button.MaterialButton
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="2dp"
-        android:text="S"
-        android:textColor="#F5F5F5"
-        app:backgroundTint="#66BB6A"
-        app:elevation="4dp"
-        app:strokeColor="#C2185B"
-        app:strokeWidth="3dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnI"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="2dp"
+            android:text="i"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#26A69A"
+            app:elevation="4dp"
+            app:strokeColor="#C62828"
+            app:strokeWidth="3dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="2dp"
-        android:text="E"
-        android:textColor="#DCDCDC"
-        app:backgroundTint="#9CCC65"
-        app:elevation="4dp"
-        app:strokeColor="#7B1FA2"
-        app:strokeWidth="3dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnS"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="2dp"
+            android:text="S"
+            android:textColor="#F5F5F5"
+            app:backgroundTint="#66BB6A"
+            app:elevation="4dp"
+            app:strokeColor="#C2185B"
+            app:strokeWidth="3dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="2dp"
-        android:layout_marginEnd="2dp"
-        android:text="A"
-        android:textColor="#808080"
-        app:backgroundTint="#D4E157"
-        app:elevation="4dp"
-        app:strokeColor="#512DA8"
-        app:strokeWidth="3dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnE"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="2dp"
+            android:text="E"
+            android:textColor="#DCDCDC"
+            app:backgroundTint="#9CCC65"
+            app:elevation="4dp"
+            app:strokeColor="#7B1FA2"
+            app:strokeWidth="3dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="2dp"
-        android:layout_marginEnd="2dp"
-        android:text="L"
-        android:textColor="#000000"
-        app:backgroundTint="#FFEE58"
-        app:elevation="4dp"
-        app:strokeColor="#303F9F"
-        app:strokeWidth="3dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnA"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:text="A"
+            android:textColor="#808080"
+            app:backgroundTint="#D4E157"
+            app:elevation="4dp"
+            app:strokeColor="#512DA8"
+            app:strokeWidth="3dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnL"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:text="L"
+            android:textColor="#000000"
+            app:backgroundTint="#FFEE58"
+            app:elevation="4dp"
+            app:strokeColor="#303F9F"
+            app:strokeWidth="3dp" />
+    </LinearLayout>
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progress"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        app:hideAnimationBehavior="outward"
+        app:indicatorColor="#64B5F6"
+        app:indicatorDirectionLinear="leftToRight"
+        app:showAnimationBehavior="inward"
+        app:trackColor="#1565C0"
+        app:trackCornerRadius="6dp" />
+
 </LinearLayout>

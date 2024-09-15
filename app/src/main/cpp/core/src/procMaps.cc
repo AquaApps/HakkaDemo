@@ -227,3 +227,11 @@ auto hakka::ProcMaps::getMaps(pid_t pid, i32 range) -> std::shared_ptr<ProcMaps>
     });
     return head;
 }
+
+auto hakka::ProcMaps::getAllMaps(pid_t pid) -> std::vector<std::shared_ptr<ProcMaps>> {
+    std::vector<std::shared_ptr<ProcMaps>> result;
+    llex_maps(pid, [&](std::shared_ptr<ProcMaps> maps) { // NOLINT(*-unnecessary-value-param)
+        result.push_back(maps);
+    });
+    return result;
+}

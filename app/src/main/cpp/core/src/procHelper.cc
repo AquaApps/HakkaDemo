@@ -8,7 +8,7 @@
 
 template<size_t N>
 auto inline readProcFile(pid_t pid, const char *name, char *dest) -> void {
-    std::string filePath = "/Proc/" + std::to_string(pid) + "/" + name;
+    std::string filePath = "/proc/" + std::to_string(pid) + "/" + name;
     FILE *_fp = fopen(filePath.c_str(), "r");
     if (_fp != nullptr) {
         std::fgets(dest, N, _fp);
@@ -21,7 +21,7 @@ auto inline readProcFile(pid_t pid, const char *name, char *dest) -> void {
 
 auto hakka::getPidList() -> std::vector<pid_t> {
     std::vector<pid_t> list;
-    auto *procDir = opendir("/Proc");
+    auto *procDir = opendir("/proc");
     if (procDir == nullptr) {
         throw hakka::file_cannot_open();
     }
@@ -48,7 +48,7 @@ auto hakka::getPidList() -> std::vector<pid_t> {
 }
 
 auto hakka::findPidByPackage(std::string &package) -> pid_t {
-    auto *procDir = opendir("/Proc");
+    auto *procDir = opendir("/proc");
     if (procDir == nullptr) {
         throw hakka::file_cannot_open();
     }
@@ -60,6 +60,7 @@ auto hakka::findPidByPackage(std::string &package) -> pid_t {
         }
         pid_t pid = std::stoi(pidFile->d_name);
         readProcFile<sizeof(cmdLine)>(pid, "cmdline", cmdLine);
+
         if (package == cmdLine) {
             closedir(procDir);
             return pid;
@@ -71,7 +72,7 @@ auto hakka::findPidByPackage(std::string &package) -> pid_t {
 
 auto hakka::getProcessList() -> std::vector<hakka::Proc> {
     std::vector<hakka::Proc> list;
-    auto *procDir = opendir("/Proc");
+    auto *procDir = opendir("/proc");
     if (procDir == nullptr) {
         throw hakka::file_cannot_open();
     }

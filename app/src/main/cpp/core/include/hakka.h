@@ -85,6 +85,8 @@ namespace hakka {
         static void determineRange(hakka::ProcMaps *maps, bool last_is_cd);
 
         static auto getMaps(pid_t pid, i32 range = MemoryRange::ALL) -> std::shared_ptr<ProcMaps>;
+
+        static auto getAllMaps(pid_t pid) -> std::vector<std::shared_ptr<ProcMaps>>;
     };
 
     /**
@@ -107,8 +109,9 @@ namespace hakka {
 
         void write(ptr_t addr, void *data, size_t len);
 
-        auto
-        getMaps(i32 range = hakka::MemoryRange::ALL) const -> std::shared_ptr<hakka::ProcMaps>;
+        auto getMaps(i32 range = hakka::MemoryRange::ALL) const -> std::shared_ptr<hakka::ProcMaps>;
+
+        auto getAllMaps() const -> std::vector<std::shared_ptr<hakka::ProcMaps>>;
 
         auto getPageEntry(ptr_t address) -> hakka::PagemapEntry;
 

@@ -30,8 +30,9 @@ public class IPC extends ContentProvider {
     }
 
     public static void sendBinderToAllManager(Binder binder) throws RemoteException {
-        List<UserInfo> users = UserManagerApis.getUsers(true, true, true);
-        users.forEach(userInfo -> sendBinderToApp(binder, ServerConstants.PACKAGE_NAME_MANAGER, "blog.akua.fan", "IPC", userInfo.id, true));
+        sendBinderToApp(binder, ServerConstants.PACKAGE_NAME_MANAGER, "blog.akua.fan", "IPC", 0, true);
+//        List<UserInfo> users = UserManagerApis.getUsers(true, true, true);
+//        users.forEach(userInfo -> sendBinderToApp(binder, ServerConstants.PACKAGE_NAME_MANAGER, "blog.akua.fan", "IPC", userInfo.id, true));
     }
 
     private static void sendBinderToApp(Binder binder, String packageName, String authorization, String body, int userId, boolean retry) {

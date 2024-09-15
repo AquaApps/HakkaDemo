@@ -87,12 +87,17 @@ public class HakkaServer extends Binder implements IHakkaServer {
         attachInterface(this, DESCRIPTION);
         new Thread(new ManagerListenServer()).start();
         new Handler().post(ManagerListenServer::postToManager);
-        
-//        while (true){
-//            String s = Hakka.attachGame();
-//            ServerConstants.log("attachGame " +s);
-//            Thread.sleep(4_000);
-//        }
+
+        try {
+            String s = Hakka.attachGame();
+            ServerConstants.log("attachGame " + s);
+            Thread.sleep(4_000);
+            boolean alve = Hakka.isAlve();
+            ServerConstants.log("isAlive " + alve);
+        } catch (Exception e) {
+            ServerConstants.log("attachGame err" + e);
+        }
+
     }
 
     public void killServer() {

@@ -46,9 +46,9 @@ auto hakka::Target::isAlive() const -> bool {
 
 void hakka::Target::read(ptr_t addr, void *data, size_t len) {
     auto entry = getPageEntry(addr);
-    if (!entry.present) {
-        throw std::runtime_error("The page is not present.");
-    }
+//    if (!entry.present) {
+//        throw std::runtime_error("The page is not present.");
+//    }
     switch (this->memoryMode) {
         case hakka::DIRECT: {
             readByDirect(addr, data, len);
@@ -92,6 +92,10 @@ void hakka::Target::write(ptr_t addr, void *data, size_t len) {
 
 auto hakka::Target::getMaps(i32 range) const -> std::shared_ptr<hakka::ProcMaps> {
     return hakka::ProcMaps::getMaps(this->pid, range);
+}
+
+auto hakka::Target::getAllMaps() const -> std::vector<std::shared_ptr<hakka::ProcMaps>> {
+    return hakka::ProcMaps::getAllMaps(this->pid);
 }
 
 auto hakka::Target::getPageEntry(ptr_t address) -> hakka::PagemapEntry {

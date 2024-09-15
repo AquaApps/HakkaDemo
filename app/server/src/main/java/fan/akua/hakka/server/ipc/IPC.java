@@ -10,10 +10,15 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.List;
 import java.util.Observer;
 
@@ -129,6 +134,18 @@ public class IPC extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+        //告诉server，我他妈来了！
+        new Thread(() -> {
+            try (Socket socket = new Socket("127.0.0.7", ServerConstants.PORT_LISTEN)) {
+                Log.d("simon", "connect: " + socket.isConnected());
+            } catch (IOException noNet) {
+                try (Socket socket = new Socket(InetAddress.getLoopbackAddress(), ServerConstants.PORT_LISTEN)) {
+                    Log.d("simon", "connect: " + socket.isConnected());
+                } catch (IOException ignored) {
+
+                }
+            }
+        }).start();
         return true;
     }
 

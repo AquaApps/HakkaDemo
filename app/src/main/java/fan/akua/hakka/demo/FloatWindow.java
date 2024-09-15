@@ -2,9 +2,11 @@ package fan.akua.hakka.demo;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,9 +14,19 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.google.android.material.progressindicator.LinearProgressIndicator;
+import androidx.annotation.NonNull;
 
+import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.topjohnwu.superuser.Shell;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Objects;
 
 public class FloatWindow {
@@ -27,6 +39,7 @@ public class FloatWindow {
     private Button i, S, E, A, L;
     private LinearProgressIndicator progress;
     private TextView logWindow;
+    private final ArrayList<String> logLines = new ArrayList<>();
 
     public FloatWindow(Context context) {
         this.mContext = context;
@@ -47,8 +60,25 @@ public class FloatWindow {
                 PixelFormat.TRANSLUCENT);
 
         logWindow = new TextView(mContext);
+        logWindow.setTextColor(Color.parseColor("#44fefffe"));
         params.gravity = Gravity.TOP | Gravity.START;
         mWindowManager.addView(logWindow, params);
+        new Thread(() -> {
+            try {
+                Process process = Runtime.getRuntime().exec("su -c logcat *:S simonServer:E");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logLines.add(0, line);
+                    if (logLines.size() == 21) {
+                        logLines.remove(20);
+                    }
+                    logWindow.post(() -> logWindow.setText(String.join("\n", logLines)));
+                }
+            } catch (Exception e) {
+                Log.e("simonServer", "crash " + e);
+            }
+        }).start();
     }
 
     @SuppressLint("InflateParams")

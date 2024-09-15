@@ -51,9 +51,9 @@ public class MainActivity extends AppCompatActivity {
             try {
                 String command = "sh " + ServerStarter.writeFiles(MainActivity.this);
                 Shell.su(command).submit(out -> {
-                    out.getOut().forEach(s -> Log.d("simon", "out: " + s));
+                    out.getOut().forEach(s -> Log.d("simonServer", "out: " + s));
                     if (out.getCode() != 0) {
-                        out.getErr().forEach(s -> Log.d("simon", "err: " + s));
+                        out.getErr().forEach(s -> Log.d("simonServer", "err: " + s));
                     }
                 });
             } catch (IOException | ErrnoException e) {

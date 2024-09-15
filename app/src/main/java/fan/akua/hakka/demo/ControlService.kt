@@ -14,19 +14,14 @@ class ControlService : LifecycleService() {
     private var mMusicNotification: NotificationDistribute? = null
     private var floatWindow: FloatWindow? = null
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onCreate() {
+        super.onCreate()
         mMusicNotification = NotificationDistribute.Builder(this)
-        if (mNotificationManager == null) {
-            mNotificationManager = NotificationDistribute.createChannel(this)
-        }
+        mNotificationManager = NotificationDistribute.createChannel(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForeground(NOTIFICATION_ID, mMusicNotification!!.build())
         }
-        return super.onStartCommand(intent, flags, startId)
-    }
 
-    override fun onCreate() {
-        super.onCreate()
         floatWindow = FloatWindow(this)
         floatWindow?.showFloatWindow()
     }

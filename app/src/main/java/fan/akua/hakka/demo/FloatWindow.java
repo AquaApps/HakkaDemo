@@ -40,6 +40,7 @@ public class FloatWindow {
     private LinearProgressIndicator progress;
     private TextView logWindow;
     private final ArrayList<String> logLines = new ArrayList<>();
+    private Thread thread;
 
     public FloatWindow(Context context) {
         this.mContext = context;
@@ -63,7 +64,8 @@ public class FloatWindow {
         logWindow.setTextColor(Color.parseColor("#44fefffe"));
         params.gravity = Gravity.TOP | Gravity.START;
         mWindowManager.addView(logWindow, params);
-        new Thread(() -> {
+        logWindow.setVisibility(View.INVISIBLE);
+        thread = new Thread(() -> {
             try {
                 Process process = Runtime.getRuntime().exec("su -c logcat *:S simonServer:E");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -73,12 +75,14 @@ public class FloatWindow {
                     if (logLines.size() == 21) {
                         logLines.remove(20);
                     }
-                    logWindow.post(() -> logWindow.setText(String.join("\n", logLines)));
+                    if (logWindow.getVisibility() == View.VISIBLE)
+                        logWindow.post(() -> logWindow.setText(String.join("\n", logLines)));
                 }
             } catch (Exception e) {
                 Log.e("simonServer", "crash " + e);
             }
-        }).start();
+        });
+        thread.start();
     }
 
     @SuppressLint("InflateParams")
@@ -114,9 +118,17 @@ public class FloatWindow {
         assert L != null;
         assert progress != null;
         progress.hide();
-        i.setOnClickListener(new View.OnClickListener() {
+        i.setOnClickListener(v -> {
+            if (logWindow.getVisibility() == View.VISIBLE) {
+                logWindow.setVisibility(View.INVISIBLE);
+            } else {
+                logWindow.setVisibility(View.VISIBLE);
+            }
+        });
+        S.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // 改属性
                 progress.show();
             }
         });
@@ -137,6 +149,7 @@ public class FloatWindow {
             mWindowManager.removeView(mFloatLayout);
         if (logWindow.getParent() != null)
             mWindowManager.removeView(logWindow);
+        thread.interrupt();
     }
 
 

@@ -63,3 +63,24 @@ Java_fan_akua_hakka_Hakka_isAlve(JNIEnv *, jclass) {
     }
     return process->isAlive() ? JNI_TRUE : JNI_FALSE;
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_fan_akua_hakka_Hakka_search(JNIEnv *env, jclass clazz) {
+    auto searcher = hakka::MemorySearcher(process);
+//    searcher.setMemoryRange(hakka::MemoryRange::OTHER | hakka::MemoryRange::CA);
+    searcher.setMemoryRange(hakka::MemoryRange::OTHER);
+//    searcher.setMemoryRange(hakka::MemoryRange::ALL);
+    searcher.setPageConfig(false, false);
+    searcher.setSearchRange(0, 0xfffffffff);
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "pre search");
+    auto size = searcher.searchValue("2680D;170D", 512);
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find num: %d", size);
+
+    auto mySet = searcher.getResults();
+    i32 tmp;
+    for (const auto &ptr: mySet) {
+        process->read(ptr, &tmp, sizeof(tmp));
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find %d [%llx]", tmp, ptr);
+    }
+}

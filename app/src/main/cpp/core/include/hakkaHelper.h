@@ -19,14 +19,6 @@ namespace hakka {
 
     auto getProcessList() -> std::vector<hakka::Proc>;
 
-    enum MatchSign {
-        EQ, // ==
-        NE, // !=
-        GT, // >
-        GE, // >=
-        LT, // <
-        LE, // <=
-    };
 
     class MemorySearcher {
     protected:
@@ -34,12 +26,12 @@ namespace hakka {
         std::unordered_set<ptr_t> results;
 
         i32 range = MemoryRange::ALL;
-        ptr_t start: 8 = 0;
-        ptr_t end: 8 = 0;
+        ptr_t start = 0;
+        ptr_t end = 0;
         // 忽略换出的页面
-        bool ignoreSwappedPage: 1 = false;
+        bool ignoreSwappedPage = false;
         // 忽略缺少的页面
-        bool ignoreMissingPage: 1 = true;
+        bool ignoreMissingPage = true;
 
         void organizeMemoryPageGroups(std::vector<std::pair<ptr_t, ptr_t>> &dest);
 
@@ -52,8 +44,7 @@ namespace hakka {
 
         void setSearchRange(ptr_t start, ptr_t end);
 
-        auto searchValue(const std::string &expr, size_t valueSize,
-                         MatchSign sign = EQ) -> size_t;
+        auto searchValue(const std::string &expr, ptr_t bandSize) -> size_t;
 
         auto getResults() -> const std::unordered_set<ptr_t> &;
 

@@ -91,9 +91,9 @@ public class HakkaServer extends Binder implements IHakkaServer {
         try {
             String s = Hakka.attachGame();
             ServerConstants.log("attachGame " + s);
-            Thread.sleep(4_000);
             boolean alve = Hakka.isAlve();
             ServerConstants.log("isAlive " + alve);
+            Hakka.search();
         } catch (Exception e) {
             ServerConstants.log("attachGame err" + e);
         }

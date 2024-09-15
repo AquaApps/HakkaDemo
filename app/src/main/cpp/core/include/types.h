@@ -14,8 +14,33 @@ using u32 = uint32_t;
 using u16 = uint16_t;
 using u8 = uint8_t;
 
-#ifdef HAKUTAKU_64BIT
 using ptr_t = std::int64_t;
-#else
-using ptr_t = std::int32_t;
-#endif
+
+enum ValueType {
+    type_i32 = 0,
+    type_float = 1,
+    type_unknown = 2
+};
+
+using BasicValue = std::variant<i32, float, u32>;
+
+class ValueRange {
+public:
+    BasicValue start;
+    BasicValue end;
+    ValueType type = type_unknown;
+
+    bool operator<(const ValueRange &other) const {
+        if (type != other.type)
+            return type < other.type;
+        if (start < other.start)
+            return true;
+        if (other.start < start)
+            return false;
+        return end < other.end;
+    }
+
+    [[nodiscard]] bool match(BasicValue val) const {
+        return val >= start && val <= end;
+    }
+};

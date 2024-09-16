@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <map>
 #include <string>
-
+#include <list>
 #include <istream>
 #include <sstream>
 #include <cctype>
@@ -69,17 +69,18 @@ static auto parseExpr(const std::string &expr) -> std::vector<ValueRange> {
 class Band : public std::enable_shared_from_this<Band> {
 public:
     // todo 这里改成链表
-    std::map<ValueRange, int> valuesMap;
+//    std::map<ValueRange, int> valuesMap;
+    std::map<ValueRange,std::list<ptr_t>> valuesMap;
     ptr_t index;
 
     explicit Band(const std::vector<ValueRange> &ranges) {
         for (const auto &range: ranges)
-            valuesMap[range] = 0;
+            valuesMap[range] = std::list<ptr_t>();
     }
 
     bool isMatch() {
         return std::all_of(this->valuesMap.begin(), this->valuesMap.end(),
-                           [](const auto &pair) { return pair.second != 0; });
+                           [](const auto &pair) { return pair.second.empty() == false; });
     }
 };
 
@@ -124,7 +125,7 @@ auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize)
     std::vector<std::pair<ptr_t, ptr_t>> pages;
 
 
-    pages.emplace_back(0x78ec38f000, 0x78ec38ffff);
+    pages.emplace_back(0x6ff8f8e884, 0x6ff8f8e8c0);
 
 
 //    this->organizeMemoryPageGroups(pages);
@@ -146,7 +147,7 @@ auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize)
                           this->process->read(band.index, &tmp, sizeof(tmp));
                           for (const auto &valueRange: ranges)
                               if (valueRange.match(tmp)) {
-                                  band.valuesMap[valueRange]++;
+                                  band.valuesMap[valueRange].push_back(band.index);//插入到链表尾
                                   break;
                               }
                           band.index += sizeof(tmp);
@@ -158,7 +159,7 @@ auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize)
                           for (const auto &valueRange: ranges)
                               if (valueRange.match(tmp)) {
                                   __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "match ");
-                                  band.valuesMap[valueRange]++;
+                                  band.valuesMap[valueRange].push_back(band.index);
                                   break;
                               }
                           // 如何此时band内已经满足联合条件，判断出去的点是否是条件之一，如果是则添加到结果
@@ -169,29 +170,43 @@ auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize)
                               this->process->read(last, &tmp, sizeof(tmp));
                               for (const auto &valueRange: ranges)
                                   if (valueRange.match(tmp)) {
-                                      band.valuesMap[valueRange]--;
-                                      results.insert(last);
+                                      // 获取列表的第一个元素
+                                      ptr_t firstElement = band.valuesMap[valueRange].front();
+                                      band.valuesMap[valueRange].pop_front();
+                                      results.insert(firstElement);
                                       break;
                                   }
                           }
                           band.index += sizeof(tmp);
                       }
-
+                      //最后一个bandSize如果匹配则将所有地址返回
+                      if (band.isMatch()) {
+                          //ptr_t last = band.index - bandSize;
+                          //this->process->read(last, &tmp, sizeof(tmp));
+                          for (const auto &valueRange: ranges) {
+                              while (!band.valuesMap[valueRange].empty()) {
+                                  ptr_t firstElement = band.valuesMap[valueRange].front();
+                                  band.valuesMap[valueRange].pop_front();
+                                  results.insert(firstElement);
+                                  //.insert(last);
+                              }
+                          }
+                      }
                       // 收尾工作
-                      band.index -= bandSize;
-                      while (band.index <= _end && (_end - band.index) >= sizeof(tmp)) {
-                          if (band.isMatch()) {
-                              ptr_t last = band.index - bandSize;
-                              this->process->read(last, &tmp, sizeof(tmp));
-                              for (const auto &valueRange: ranges)
-                                  if (valueRange.match(tmp)) {
-                                      band.valuesMap[valueRange]--;
-                                      results.insert(last);
-                                      break;
-                                  }
-                          }
-                          band.index += sizeof(tmp);
-                      }
+//                      band.index -= bandSize;
+//                      while (band.index <= _end && (_end - band.index) >= sizeof(tmp)) {
+//                          if (band.isMatch()) {
+//                              ptr_t last = band.index - bandSize;
+//                              this->process->read(last, &tmp, sizeof(tmp));
+//                              for (const auto &valueRange: ranges)
+//                                  if (valueRange.match(tmp)) {
+//                                      band.valuesMap[valueRange]--;
+//                                      results.insert(last);
+//                                      break;
+//                                  }
+//                          }
+//                          band.index += sizeof(tmp);
+//                      }
 
                   });
     return this->results.size();

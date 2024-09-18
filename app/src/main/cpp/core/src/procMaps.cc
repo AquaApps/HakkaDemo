@@ -9,68 +9,59 @@
 
 namespace fs = std::filesystem;
 
-hakka::ProcMaps::ProcMaps(ptr_t start, ptr_t end) {
-    this->_start = start;
-    this->_end = end;
+hakka::ProcMap::ProcMap(ptr_t start, ptr_t end,
+                        bool readable, bool writable, bool executable,
+                        const char *moduleName)
+        : _start(start), _end(end),
+          _readable(readable), _writable(writable), _executable(executable) {
+    strcpy(_moduleName, moduleName);
 }
 
-void hakka::ProcMaps::insert(std::shared_ptr<hakka::ProcMaps> maps) { // NOLINT(*-unnecessary-value-param)
-    if (maps == shared_from_this()) {
-        throw hakka::recursive_maps_error();
-    }
-    if (this->_tail == nullptr) {
-        this->_tail = maps;
-    } else {
-        auto temp = this->_tail;
-        maps->_head = shared_from_this();
-        maps->last()->_tail = temp;
-        this->_tail = maps;
-    }
+void hakka::ProcMap::setLastRange(bool isCD) {
+    determineRange(isCD);
 }
 
-void hakka::ProcMaps::remove() {
-    _head->_tail = _tail;
-    _tail->_head = _head;
+auto hakka::ProcMap::size() const -> size_t {
+    return _end - _start;
 }
 
-auto hakka::ProcMaps::size() -> size_t {
-    size_t size = 1;
-    auto curr = shared_from_this();
-    while ((curr = curr->next()) != nullptr) {
-        size++;
-    }
-    return size;
-}
-
-auto hakka::ProcMaps::start() const -> ptr_t {
+auto hakka::ProcMap::start() const -> ptr_t {
     return _start;
 }
 
-auto hakka::ProcMaps::end() const -> ptr_t {
+auto hakka::ProcMap::end() const -> ptr_t {
     return _end;
 }
 
-auto hakka::ProcMaps::last() -> std::shared_ptr<hakka::ProcMaps> {
-    auto curr = shared_from_this();
-    std::shared_ptr<ProcMaps> result = curr;
-    while ((curr = curr->next()) != nullptr) {
-        result = curr;
-    }
-    return result;
+auto hakka::ProcMap::range() const -> hakka::MemoryRange {
+    return _range;
 }
 
-auto hakka::ProcMaps::next() -> std::shared_ptr<hakka::ProcMaps>& {
-    return _tail;
+auto hakka::ProcMap::readable() const -> bool {
+    return _readable;
 }
 
-void hakka::ProcMaps::determineRange(hakka::ProcMaps* maps, bool last_is_cd) { // NOLINT(*-no-recursion)
+auto hakka::ProcMap::writable() const -> bool {
+    return _writable;
+}
+
+auto hakka::ProcMap::executable() const -> bool {
+    return _executable;
+}
+
+auto hakka::ProcMap::moduleName() const -> const char * {
+    return _moduleName;
+}
+
+void hakka::ProcMap::determineRange(bool lastIsCd) {
     using namespace hakka;
-    auto *module_name = maps->module_name;
-    if (maps->executable) {
-        if (module_name[0] == '\0' || (strstr(module_name, "/data/app") != nullptr) || (strstr(module_name, "/data/user") != nullptr)) {
-            maps->range = XA;
+    auto *module_name = this->_moduleName;
+    if (this->_executable) {
+        if (module_name[0] == '\0' || (strstr(module_name, "/data/app") != nullptr) ||
+            (strstr(module_name, "/data/user") != nullptr)) {
+            this->_range = XA;
         } else {
-            maps->range = XS;
+            this->_range = XS;
         }
         return;
     }
@@ -89,149 +80,87 @@ void hakka::ProcMaps::determineRange(hakka::ProcMaps* maps, bool last_is_cd) { /
                 || (strstr(module_name, "/dev/graphics") != nullptr)
                 || (strstr(module_name, "/dev/mm_") != nullptr)
                 || (strstr(module_name, "/dev/dri/") != nullptr))) {
-            maps->range = V;
+            this->_range = V;
             return;
         }
-        if ( ((strncmp(module_name, "/dev/", 5) == 0) && (strstr(module_name, "/dev/xLog") != nullptr))
-             || (strncmp(module_name, "/system/fonts/", 0xe) == 0)
-             || (strncmp(module_name, "anon_inode:dmabuf", 0x11) == 0)) {
-            maps->range = BAD;
+        if (((strncmp(module_name, "/dev/", 5) == 0) &&
+             (strstr(module_name, "/dev/xLog") != nullptr))
+            || (strncmp(module_name, "/system/fonts/", 0xe) == 0)
+            || (strncmp(module_name, "anon_inode:dmabuf", 0x11) == 0)) {
+            this->_range = BAD;
             return;
         }
         if (strstr(module_name, "[anon:.bss]") != nullptr) {
-            maps->range = last_is_cd ? CB : OTHER;
+            this->_range = lastIsCd ? CB : OTHER;
             return;
         }
         if (strncmp(module_name, "/system/", 8) == 0) {
-            maps->range = OTHER;
+            this->_range = OTHER;
             return;
         }
         if (strstr(module_name, "/dev/zero") != nullptr) {
-            maps->range = CA;
+            this->_range = CA;
             return;
         }
         if (strstr(module_name, "PPSSPP_RAM") != nullptr) {
-            maps->range = PS;
+            this->_range = PS;
             return;
         }
-        if ( (strstr(module_name, "system@") == nullptr)
-             && (strstr(module_name, "gralloc") == nullptr)
-             && strncmp(module_name, "[vdso]", 6) != 0
-             && strncmp(module_name, "[vectors]", 9) != 0
-             && (strncmp(module_name, "/dev/", 5) != 0 || (strncmp(module_name, "/dev/ashmem", 0xB) == 0)) ) {
-            if ( strstr(module_name, "dalvik") != nullptr ) {
-                if ( ((strstr(module_name, "eap") != nullptr)
-                      || (strstr(module_name, "dalvik-alloc") != nullptr)
-                      || (strstr(module_name, "dalvik-main") != nullptr)
-                      || (strstr(module_name, "dalvik-large") != nullptr)
-                      || (strstr(module_name, "dalvik-free") != nullptr))
-                     && (strstr(module_name, "itmap") == nullptr)
-                     && (strstr(module_name, "ygote") == nullptr)
-                     && (strstr(module_name, "ard") == nullptr)
-                     && (strstr(module_name, "jit") == nullptr)
-                     && (strstr(module_name, "inear") == nullptr) ) {
-                    maps->range = JH;
+        if ((strstr(module_name, "system@") == nullptr)
+            && (strstr(module_name, "gralloc") == nullptr)
+            && strncmp(module_name, "[vdso]", 6) != 0
+            && strncmp(module_name, "[vectors]", 9) != 0
+            && (strncmp(module_name, "/dev/", 5) != 0 ||
+                (strncmp(module_name, "/dev/ashmem", 0xB) == 0))) {
+            if (strstr(module_name, "dalvik") != nullptr) {
+                if (((strstr(module_name, "eap") != nullptr)
+                     || (strstr(module_name, "dalvik-alloc") != nullptr)
+                     || (strstr(module_name, "dalvik-main") != nullptr)
+                     || (strstr(module_name, "dalvik-large") != nullptr)
+                     || (strstr(module_name, "dalvik-free") != nullptr))
+                    && (strstr(module_name, "itmap") == nullptr)
+                    && (strstr(module_name, "ygote") == nullptr)
+                    && (strstr(module_name, "ard") == nullptr)
+                    && (strstr(module_name, "jit") == nullptr)
+                    && (strstr(module_name, "inear") == nullptr)) {
+                    this->_range = JH;
                     return;
                 }
-                maps->range = J;
+                this->_range = J;
                 return;
             }
-            if ((strstr(module_name, "/lib") != nullptr) && (strstr(module_name, ".so") != nullptr)) {
-                if (strstr(module_name, "/data/") != nullptr || (strstr(module_name, "/mnt/") != nullptr)) {
-                    maps->range = CD;
+            if ((strstr(module_name, "/lib") != nullptr) &&
+                (strstr(module_name, ".so") != nullptr)) {
+                if (strstr(module_name, "/data/") != nullptr ||
+                    (strstr(module_name, "/mnt/") != nullptr)) {
+                    this->_range = CD;
                     return;
                 }
             }
             if (strstr(module_name, "malloc") != nullptr) {
-                maps->range = CA;
+                this->_range = CA;
                 return;
             }
             if (strstr(module_name, "[heap]") != nullptr) {
-                maps->range = CH;
+                this->_range = CH;
                 return;
             }
             if (strstr(module_name, "[stack") != nullptr) {
-                maps->range = S;
+                this->_range = S;
                 return;
             }
-            if ((strncmp(module_name, "/dev/ashmem", 0xB) == 0) && (strstr(module_name, "MemoryHeapBase") == nullptr)) {
-                maps->range = AS;
+            if ((strncmp(module_name, "/dev/ashmem", 0xB) == 0) &&
+                (strstr(module_name, "MemoryHeapBase") == nullptr)) {
+                this->_range = AS;
                 return;
             }
         }
-        maps->range = OTHER;
+        this->_range = OTHER;
         return;
     }
-    if (maps->readable && maps->writable && !maps->executable && maps->offset == 0) {
-        maps->range = A;
+    if (this->_readable && this->_writable) {
+        this->_range = A;
         return;
     }
-    maps->range = OTHER;
-}
-
-void llex_maps(pid_t pid, const std::function<void(std::shared_ptr<hakka::ProcMaps>)>& callback) {
-    std::ifstream maps(std::string("/proc/") + std::to_string(pid) + "/maps");
-    if (!maps.is_open()) {
-        throw hakka::file_not_found();
-    }
-    std::string line;
-    bool last_is_cd = false;
-    while (getline(maps, line)) {
-        std::istringstream iss(line);
-        std::vector<std::string> tokens;
-        std::string token;
-
-        while (getline(iss, token, ' ')) {
-            tokens.push_back(token);
-        }
-
-        auto address = tokens[0];
-        std::string::size_type pos = address.find('-');
-        ptr_t start_addr = std::stol(address.substr(0, pos), nullptr, 16);
-        ptr_t end_addr = std::stol(address.substr(pos + 1), nullptr, 16);
-        auto pmaps = std::make_shared<hakka::ProcMaps>(start_addr, end_addr);
-        auto perms = tokens[1];
-        pmaps->readable = perms[0] == 'r';
-        pmaps->writable = perms[1] == 'w';
-        pmaps->executable = perms[2] == 'x';
-        pmaps->is_private = perms[3] == 'p';
-        pmaps->offset = std::stoll(tokens[2], nullptr, 16);
-        pmaps->inode = std::stoi(tokens[4]);
-        std::string module_name;
-        if (tokens.size() > 5) {
-            for (int i = 5; i < tokens.size(); i++) {
-                module_name += tokens[i];
-            }
-        }
-        if (module_name.size() < 128) {
-            module_name.copy(pmaps->module_name, module_name.size());
-            pmaps->module_name[module_name.size()] = '\0';
-        }
-        hakka::ProcMaps::determineRange(pmaps.get(), last_is_cd);
-        last_is_cd = pmaps->range == hakka::MemoryRange::CD;
-        callback(pmaps);
-    }
-    maps.close();
-}
-
-auto hakka::ProcMaps::getMaps(pid_t pid, i32 range) -> std::shared_ptr<ProcMaps> {
-    std::shared_ptr<ProcMaps> head;
-    llex_maps(pid, [&](std::shared_ptr<ProcMaps> maps) { // NOLINT(*-unnecessary-value-param)
-        if ((range & maps->range) == maps->range) {
-            if (head == nullptr) {
-                head.swap(maps);
-            } else {
-                head->insert(maps);
-            }
-        }
-    });
-    return head;
-}
-
-auto hakka::ProcMaps::getAllMaps(pid_t pid) -> std::vector<std::shared_ptr<ProcMaps>> {
-    std::vector<std::shared_ptr<ProcMaps>> result;
-    llex_maps(pid, [&](std::shared_ptr<ProcMaps> maps) { // NOLINT(*-unnecessary-value-param)
-        result.push_back(maps);
-    });
-    return result;
+    this->_range = OTHER;
 }

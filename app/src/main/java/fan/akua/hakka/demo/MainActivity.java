@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             } catch (IOException | ErrnoException e) {
-                throw new RuntimeException(e);
+                Log.e("simonServer", "exec error: " + e);
             }
         });
     }

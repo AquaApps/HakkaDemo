@@ -1,9 +1,9 @@
 #include <bits/sysconf.h>
 #include "hakka.h"
 
-auto hakka::PagemapEntry::getPagemapEntry(handle pagemapFd,
-                                          ptr_t vaddr) -> PagemapEntry { // NOLINT(*-easily-swappable-parameters)
-    hakka::PagemapEntry entry{};
+auto hakka::PageEntry::getPagemapEntry(handle pagemapFd,
+                                          ptr_t vaddr) -> PageEntry { // NOLINT(*-easily-swappable-parameters)
+    hakka::PageEntry entry{};
     size_t nread;
     int64_t ret;
     uint64_t data;

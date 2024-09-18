@@ -4,6 +4,7 @@
 #include <asm-generic/fcntl.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "exception.h"
 #include "hakka.h"
 
 hakka::Target::Target(pid_t pid, MemoryMode mode) {
@@ -45,10 +46,6 @@ auto hakka::Target::isAlive() const -> bool {
 }
 
 void hakka::Target::read(ptr_t addr, void *data, size_t len) {
-    auto entry = getPageEntry(addr);
-//    if (!entry.present) {
-//        throw std::runtime_error("The page is not present.");
-//    }
     switch (this->memoryMode) {
         case hakka::DIRECT: {
             readByDirect(addr, data, len);
@@ -61,6 +58,10 @@ void hakka::Target::read(ptr_t addr, void *data, size_t len) {
         }
         case hakka::SYSCALL: {
             readBySyscall(addr, data, len);
+            break;
+        }
+        case hakka::MMAP: {
+            readByMmap(addr, data, len);
             break;
         }
         default: {
@@ -84,23 +85,68 @@ void hakka::Target::write(ptr_t addr, void *data, size_t len) {
             writeBySyscall(addr, data, len);
             break;
         }
+        case hakka::MMAP: {
+            writeByMmap(addr, data, len);
+            break;
+        }
         default: {
             throw std::runtime_error("Not support the MemoryMode.");
         }
     }
 }
 
-auto hakka::Target::getMaps(i32 range) const -> std::shared_ptr<hakka::ProcMaps> {
-    return hakka::ProcMaps::getMaps(this->pid, range);
+
+auto hakka::Target::getAllMaps() const -> std::vector<std::shared_ptr<hakka::ProcMap>> {
+    std::ifstream maps(std::string("/proc/") + std::to_string(pid) + "/maps");
+    if (!maps.is_open()) {
+        throw hakka::file_not_found();
+    }
+    std::string line;
+    bool lastIsCd = false;
+    std::vector<std::shared_ptr<hakka::ProcMap>> result;
+    auto callback = [&](std::shared_ptr<ProcMap> maps) { // NOLINT(*-unnecessary-value-param)
+        result.push_back(maps);
+    };
+
+    while (getline(maps, line)) {
+        std::istringstream iss(line);
+        std::vector<std::string> tokens;
+        std::string token;
+
+        while (getline(iss, token, ' ')) {
+            tokens.push_back(token);
+        }
+
+        auto address = tokens[0];
+        std::string::size_type pos = address.find('-');
+        ptr_t _start = std::stol(address.substr(0, pos), nullptr, 16);
+        ptr_t _end = std::stol(address.substr(pos + 1), nullptr, 16);
+
+        auto perms = tokens[1];
+        auto readable = perms[0] == 'r';
+        auto writable = perms[1] == 'w';
+        auto executable = perms[2] == 'x';
+        std::string module_name;
+        if (tokens.size() > 5) {
+            for (int i = 5; i < tokens.size(); i++) {
+                module_name += tokens[i];
+            }
+        }
+        // todo check length
+        auto map = std::make_shared<hakka::ProcMap>(_start, _end,
+                                                    readable, writable, executable,
+                                                    module_name.c_str());
+        map->setLastRange(lastIsCd);
+        lastIsCd = map->range() == hakka::MemoryRange::CD;
+        callback(map);
+    }
+    maps.close();
+    return std::move(result);
 }
 
-auto hakka::Target::getAllMaps() const -> std::vector<std::shared_ptr<hakka::ProcMaps>> {
-    return hakka::ProcMaps::getAllMaps(this->pid);
-}
-
-auto hakka::Target::getPageEntry(ptr_t address) -> hakka::PagemapEntry {
+auto hakka::Target::getPageEntry(ptr_t address) -> hakka::PageEntry {
     this->initPagemapFd();
-    return hakka::PagemapEntry::getPagemapEntry(this->pagemapFd, address);
+    return hakka::PageEntry::getPagemapEntry(this->pagemapFd, address);
 }
 
 void hakka::Target::initMemFd() {

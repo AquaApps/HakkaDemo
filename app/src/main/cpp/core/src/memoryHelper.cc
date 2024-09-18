@@ -9,8 +9,34 @@
 #include <cctype>
 #include <unistd.h>
 #include <android/log.h>
+#include <thread>
+#include <future>
 
 #define LOG_TAG "simonServer"
+void parallel_for_each(std::vector<std::pair<ptr_t, ptr_t>>& vec, const std::function<void(const std::pair<ptr_t, ptr_t>&)>& callback) {
+    auto num_threads = std::thread::hardware_concurrency(); // 获取硬件并发线程数
+    std::vector<std::future<void>> futures;
+    size_t length = vec.size();
+    size_t block_size = length / num_threads;
+
+    for (size_t i = 0; i < num_threads; ++i) {
+        size_t start = i * block_size;
+        size_t end = (i == num_threads - 1) ? length : start + block_size;
+
+        // 创建线程并执行任务
+        futures.emplace_back(std::async(std::launch::async, [&, start, end]() {
+            for (size_t j = start; j < end; ++j) {
+                callback(vec[j]);
+            }
+        }));
+    }
+
+    // 等待所有线程完成
+    for (auto& fut : futures) {
+        fut.get();
+    }
+}
+
 
 static ValueRange convertToValueRange(const std::string &input) {
     ValueRange valueRange;
@@ -124,7 +150,53 @@ public:
 #define LOG_TAG "simonServer"
 
 void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t, ptr_t>> &dest) {
+    // 拿到所有的Map，过滤留下需要的
+    auto maps = this->process->getAllMaps();
+    std::vector<std::shared_ptr<ProcMap>> rangeMaps;
+    auto filter = [this](const std::shared_ptr<ProcMap> &map) {
+        if (!map->readable())return false;
+        return (this->range & map->range()) == map->range();
+    };
+    std::copy_if(maps.begin(), maps.end(), std::back_inserter(rangeMaps), filter);
 
+    std::list<std::pair<ptr_t, ptr_t>> unMergePages;
+    auto pageSize = getpagesize();
+    std::for_each(rangeMaps.begin(), rangeMaps.end(),
+                  [this, pageSize, &unMergePages](const std::shared_ptr<ProcMap> &map) {
+                      for (int i = 0; i < ((map->end() - map->start()) / pageSize); ++i) {
+                          auto _start = map->start() + (i * pageSize);
+                          auto entry = process->getPageEntry(start);
+                          if (!entry.present && !this->ignoreMissingPage) {
+                              continue;
+                          }
+                          if (!entry.swapped && !this->ignoreSwappedPage) {
+                              continue;
+                          }
+                          auto pair = std::make_pair(_start, (ptr_t) _start + pageSize);
+                          unMergePages.push_back(pair);
+                      }
+                  });
+    // 将 list 转换为 vector 并进行排序
+    std::vector<std::pair<ptr_t, ptr_t>> lines(unMergePages.begin(), unMergePages.end());
+    std::sort(lines.begin(), lines.end());
+
+    // 合并线段
+    std::pair<ptr_t, ptr_t> currentLine = lines[0];
+
+    for (size_t i = 1; i < lines.size(); ++i) {
+        // 如果当前线段与下一条线段重叠或相连
+        if (currentLine.second >= lines[i].first) {
+            // 合并线段
+            currentLine.second = std::max(currentLine.second, lines[i].second);
+        } else {
+            // 将当前线段添加到结果并更新当前线段
+            dest.push_back(currentLine);
+            currentLine = lines[i];
+        }
+    }
+
+    // 添加最后一条线段
+    dest.push_back(currentLine);
 }
 
 hakka::MemorySearcher::MemorySearcher(std::shared_ptr<hakka::Target> target) {
@@ -156,59 +228,58 @@ auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize)
     auto ranges = parseExpr(expr);
 
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "range count %d", ranges.size());
+
     // 遍历所有满足条件的内存页
     std::vector<std::pair<ptr_t, ptr_t>> pages;
-
-    pages.emplace_back(0x6ff8f8e884, 0x6ff8f8e8c0);
-
-//    this->organizeMemoryPageGroups(pages);
+    this->organizeMemoryPageGroups(pages);
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "page count %d", pages.size());
+    parallel_for_each(pages, [&bandSize, &ranges, this](const std::pair<ptr_t, ptr_t> &item) {
+        Band band(ranges, item.first);
+        ptr_t _end = item.second;
+        i32 tmp;
+        ptr_t valueSize = sizeof(i32);
 
-    std::for_each(pages.begin(), pages.end(),
-                  [&bandSize, &ranges, this](const std::pair<ptr_t, ptr_t> &item) {
-                      // todo 使用mem file或者direct时采用多线程，使用syscall时不多线程
-                      Band band(ranges, item.first);
-                      ptr_t _end = item.second;
-                      i32 tmp;
-                      ptr_t valueSize = sizeof(i32);
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "page range 0x%llx-0x%llx",
+                            item.first, item.second);
+        // 读取第一个bandSize
+        do {
+            this->process->read(band.index, &tmp, valueSize);
+            for (const auto &valueRange: ranges)
+                if (valueRange.match(tmp)) {
+                    band.pushPtr(valueRange, band.index);
+                    break;
+                }
+            band.index += valueSize;
+        } while (band.index < (item.first + bandSize) && band.index < _end);
 
-                      __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "page range 0x%llx-0x%llx",
-                                          item.first, item.second);
-                      // 读取第一个bandSize
-                      do {
-                          this->process->read(band.index, &tmp, valueSize);
-                          for (const auto &valueRange: ranges)
-                              if (valueRange.match(tmp)) {
-                                  band.pushPtr(valueRange, band.index);
-                                  break;
-                              }
-                          band.index += valueSize;
-                      } while (band.index < (item.first + bandSize) && band.index < _end);
+        // bandSize每次移动一个ptr_t
+        while (band.index <= _end && (_end - band.index) >= valueSize) {
+            ptr_t last = band.index - bandSize;
+            this->process->read(last, &tmp, valueSize);
+            for (const auto &valueRange: ranges) {
+                if (valueRange.match(tmp)) {
+                    if (band.isMatch()) band.allToResult(results);
+                    band.popPtr(valueRange, last);
+                    break;
+                }
+            }
 
-                      // bandSize每次移动一个ptr_t
-                      while (band.index <= _end && (_end - band.index) >= valueSize) {
-                          ptr_t last = band.index - bandSize;
-                          this->process->read(last, &tmp, valueSize);
-                          for (const auto &valueRange: ranges) {
-                              if (valueRange.match(tmp)) {
-                                  if (band.isMatch()) band.allToResult(results);
-                                  band.popPtr(valueRange, last);
-                                  break;
-                              }
-                          }
+            this->process->read(band.index, &tmp, valueSize);
+            for (const auto &valueRange: ranges)
+                if (valueRange.match(tmp)) {
+                    band.pushPtr(valueRange, band.index);
+                    break;
+                }
+            band.index += valueSize;
+        }
 
-                          this->process->read(band.index, &tmp, valueSize);
-                          for (const auto &valueRange: ranges)
-                              if (valueRange.match(tmp)) {
-                                  band.pushPtr(valueRange, band.index);
-                                  break;
-                              }
-                          band.index += valueSize;
-                      }
-
-                      //最后一个bandSize如果匹配则将所有地址返回
-                      if (band.isMatch()) band.allToResult(results);
-                  });
+        //最后一个bandSize如果匹配则将所有地址返回
+        if (band.isMatch()) band.allToResult(results);
+    });
+//    std::for_each(pages.begin(), pages.end(),
+//                  [&bandSize, &ranges, this](const std::pair<ptr_t, ptr_t> &item) {
+//
+//                  });
     return this->results.size();
 }
 

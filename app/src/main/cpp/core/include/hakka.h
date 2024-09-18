@@ -17,7 +17,7 @@ namespace hakka {
      * SYSCALL: 借助process_vm_readv/writev读写指定pid的数据。
      */
     enum MemoryMode {
-        DIRECT, MEM_FILE, SYSCALL
+        DIRECT, MEM_FILE, SYSCALL, MMAP
     };
 
     enum MemoryRange {
@@ -39,7 +39,7 @@ namespace hakka {
         PS = 0b1000000000000000
     };
 
-    class PagemapEntry {
+    class PageEntry {
     public:
         u64 pfn: 54;
         u32 soft_dirty: 1;
@@ -47,46 +47,42 @@ namespace hakka {
         u32 swapped: 1;
         u32 present: 1;
 
-        static auto getPagemapEntry(handle pagemapFd, ptr_t vaddr) -> PagemapEntry;
+        static auto getPagemapEntry(handle pagemapFd, ptr_t vaddr) -> PageEntry;
     };
 
-    class ProcMaps : public std::enable_shared_from_this<ProcMaps> {
-        std::shared_ptr<ProcMaps> _head;
-        std::shared_ptr<ProcMaps> _tail;
-
+    class ProcMap : public std::enable_shared_from_this<ProcMap> {
         ptr_t _start;
         ptr_t _end;
+        hakka::MemoryRange _range = ALL;
+        char _moduleName[128]{0,};
+        bool _readable = false;
+        bool _writable = false;
+        bool _executable = false;
+
+        void determineRange(bool lastIsCd);
+
     public:
-        ProcMaps(ptr_t start, ptr_t end);
+        ProcMap(ptr_t start, ptr_t end,
+                bool readable, bool writable, bool executable,
+                const char *moduleName);
 
-        hakka::MemoryRange range = ALL;
-        bool readable = false;
-        bool writable = false;
-        bool executable = false;
-        bool is_private = false;
-        u32 inode = -1;
-        i64 offset = 0;
-        char module_name[128];
+        void setLastRange(bool isCD);
 
-        void insert(std::shared_ptr<ProcMaps> maps);
+        auto size() const -> size_t;
 
-        void remove();
+        auto start() const -> ptr_t;
 
-        auto size() -> size_t;
+        auto end() const -> ptr_t;
 
-        [[nodiscard]] auto start() const -> ptr_t;
+        auto range() const -> hakka::MemoryRange;
 
-        [[nodiscard]] auto end() const -> ptr_t;
+        auto readable() const -> bool;
 
-        auto last() -> std::shared_ptr<ProcMaps>;
+        auto writable() const -> bool;
 
-        auto next() -> std::shared_ptr<ProcMaps> &;
+        auto executable() const -> bool;
 
-        static void determineRange(hakka::ProcMaps *maps, bool last_is_cd);
-
-        static auto getMaps(pid_t pid, i32 range = MemoryRange::ALL) -> std::shared_ptr<ProcMaps>;
-
-        static auto getAllMaps(pid_t pid) -> std::vector<std::shared_ptr<ProcMaps>>;
+        auto moduleName() const -> const char *;
     };
 
     /**
@@ -109,11 +105,9 @@ namespace hakka {
 
         void write(ptr_t addr, void *data, size_t len);
 
-        auto getMaps(i32 range = hakka::MemoryRange::ALL) const -> std::shared_ptr<hakka::ProcMaps>;
+        auto getAllMaps() const -> std::vector<std::shared_ptr<hakka::ProcMap>>;
 
-        auto getAllMaps() const -> std::vector<std::shared_ptr<hakka::ProcMaps>>;
-
-        auto getPageEntry(ptr_t address) -> hakka::PagemapEntry;
+        auto getPageEntry(ptr_t address) -> hakka::PageEntry;
 
     private:
         void initMemFd();
@@ -132,6 +126,10 @@ namespace hakka {
         void readBySyscall(ptr_t addr, void *data, size_t len) const;
 
         void writeBySyscall(ptr_t addr, void *data, size_t len) const;
+
+        void readByMmap(ptr_t addr, void *data, size_t len) const;
+
+        void writeByMmap(ptr_t addr, void *data, size_t len) const;
     };
 
 

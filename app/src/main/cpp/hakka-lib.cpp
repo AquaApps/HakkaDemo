@@ -38,19 +38,19 @@ Java_fan_akua_hakka_Hakka_attachGame(JNIEnv *env,
     } catch (hakka::no_process_error &e) {
         return env->NewStringUTF(e.what());
     }
-    process = std::make_shared<hakka::Target>(pid, hakka::MemoryMode::MEM_FILE);
+    process = std::make_shared<hakka::Target>(pid, hakka::MemoryMode::SYSCALL);
 
     auto maps = process->getAllMaps();
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "start scan!!");
-    std::shared_ptr<hakka::ProcMaps> gameCore;
+    std::shared_ptr<hakka::ProcMap> gameCore;
     for (auto &item: maps) {
-        if (strstr(item->module_name, nameGameCore.c_str())) {
+        if (strstr(item->moduleName(), nameGameCore.c_str())) {
             gameCore = item;
             break;
         }
     }
     if (gameCore != nullptr) {
-        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find core me!!: %d", gameCore->start());
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find core me!!: %lld", gameCore->start());
     }
     return env->NewStringUTF("success");
 }
@@ -68,14 +68,18 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_fan_akua_hakka_Hakka_search(JNIEnv *env, jclass clazz) {
     auto searcher = hakka::MemorySearcher(process);
-//    searcher.setMemoryRange(hakka::MemoryRange::OTHER | hakka::MemoryRange::CA);
-    searcher.setMemoryRange(hakka::MemoryRange::OTHER);
-//    searcher.setMemoryRange(hakka::MemoryRange::ALL);
-    searcher.setPageConfig(false, false);
+    searcher.setMemoryRange(hakka::MemoryRange::CA);
+    searcher.setPageConfig(true, true);
     searcher.setSearchRange(0, 0xfffffffff);
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "pre search");
+
+    auto start = std::chrono::steady_clock::now();
     auto size = searcher.searchValue("2680D;170D", 512);
+    auto end = std::chrono::steady_clock::now();
+
+    std::chrono::duration<double> elapsed_seconds = end - start;
     __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find num: %d", size);
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "elapsed time: %f s", elapsed_seconds.count());
 
     auto mySet = searcher.getResults();
     i32 tmp;

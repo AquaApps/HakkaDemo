@@ -44,4 +44,22 @@ void hakka::Target::writeBySyscall(ptr_t addr, void *data, size_t len) const {
     }
 }
 
+void hakka::Target::readByMmap(ptr_t addr, void *data, size_t len) const {
+    iovec local{data, len};
+    iovec remote{(void *) addr, len};
+    if (process_vm_readv(this->pid, &local, 1, &remote, 1, 0) != len) {
+        std::string hexStr = (std::stringstream() << "Memory read Error: " << std::hex << addr
+                                                  << ".").str();
+        throw hakka::memory_operate_error(hexStr);
+    }
+}
+
+void hakka::Target::writeByMmap(ptr_t addr, void *data, size_t len) const {
+    iovec local{data, len};
+    iovec remote{(void *) addr, len};
+    if (process_vm_writev(this->pid, &local, 1, &remote, 1, 0) != len) {
+        throw hakka::memory_operate_error("Memory write error.");
+    }
+}
+
 #pragma clang diagnostic pop

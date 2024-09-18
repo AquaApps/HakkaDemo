@@ -58,6 +58,7 @@ public class FloatWindow implements IClient {
                 PixelFormat.TRANSLUCENT);
         mWindowManager.addView(animLayout, params);
         animView = animLayout.findViewById(R.id.fuckAnimation);
+        animView.setVisibility(View.INVISIBLE);
     }
 
 
@@ -159,6 +160,7 @@ public class FloatWindow implements IClient {
         ServerConstants.log("client searchStart");
         progress.post(() -> progress.show());
         i.post(() -> {
+            animView.setVisibility(View.INVISIBLE);
             i.setClickable(false);
             S.setClickable(false);
             E.setClickable(false);
@@ -173,6 +175,7 @@ public class FloatWindow implements IClient {
         progress.post(() -> progress.hide());
         animView.post(() -> animView.playAnimation());
         i.post(() -> {
+            animView.setVisibility(View.VISIBLE);
             i.setClickable(true);
             S.setClickable(true);
             E.setClickable(true);

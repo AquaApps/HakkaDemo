@@ -80,7 +80,7 @@ Java_fan_akua_hakka_Hakka_edit1(JNIEnv *env, jclass clazz) {
             // 1400 14%移速
             // 1500 1500普攻强度
             // 1 可购买
-            tmp = 754522463;
+            tmp = 98765;
             for (int i = 0; i < 13; i++) {
                 process->write(ptr + sizeof(tmp) * i, &tmp, sizeof(tmp));
             }

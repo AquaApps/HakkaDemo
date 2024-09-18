@@ -41,11 +41,9 @@ namespace hakka {
 
     class PageEntry {
     public:
-        u64 pfn: 54;
-        u32 soft_dirty: 1;
-        u32 file_page: 1;
-        u32 swapped: 1;
-        u32 present: 1;
+        // 是否叫唤，是否在内存中
+        bool swapped = false;
+        bool present = false;
 
         static auto getPagemapEntry(handle pagemapFd, ptr_t vaddr) -> PageEntry;
     };

@@ -19,9 +19,6 @@ auto hakka::PageEntry::getPagemapEntry(handle pagemapFd,
             return entry;
         }
     }
-    entry.pfn = data & (((uint64_t) 1 << 54) - 1);
-    entry.soft_dirty = (data >> 54) & 1;
-    entry.file_page = (data >> 61) & 1;
     entry.swapped = (data >> 62) & 1;
     entry.present = (data >> 63) & 1;
     return entry;

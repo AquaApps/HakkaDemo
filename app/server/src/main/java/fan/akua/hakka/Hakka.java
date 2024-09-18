@@ -1,9 +1,12 @@
 package fan.akua.hakka;
 
 public class Hakka {
-    public static native String attachGame();
 
-    public static native boolean isAlve();
+    public static native int edit1();
 
-    public static native void search();
+    public static native int edit2();
+
+    public static native int edit3();
+
+    public static native int edit4();
 }

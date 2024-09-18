@@ -33,7 +33,10 @@ namespace hakka {
         // 忽略缺少的页面
         bool ignoreMissingPage = true;
 
-        void organizeMemoryPageGroups(std::vector<std::pair<ptr_t, ptr_t>> &dest);
+        std::atomic<bool> stopFlag;
+
+        void organizeMemoryPageGroups(std::vector<std::pair<ptr_t, ptr_t>> &dest,
+                                      std::vector<std::shared_ptr<ProcMap>> &targetMaps);
 
     public:
         explicit MemorySearcher(std::shared_ptr<hakka::Target> target);
@@ -44,7 +47,13 @@ namespace hakka {
 
         void setSearchRange(ptr_t start, ptr_t end);
 
+        void stopSearch();
+
+
         auto searchValue(const std::string &expr, ptr_t bandSize) -> size_t;
+
+        auto searchValue(const std::string &expr, ptr_t bandSize,
+                         std::vector<std::shared_ptr<ProcMap>> targetMaps) -> size_t;
 
         auto getResults() -> const std::unordered_set<ptr_t> &;
 

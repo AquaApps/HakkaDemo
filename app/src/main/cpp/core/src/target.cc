@@ -156,7 +156,7 @@ void hakka::Target::initMemFd() {
 }
 
 void hakka::Target::initPagemapFd() {
-    if (this->pagemapFd == 0) return;
+    if (this->pagemapFd != 0) return;
     auto pid_str = std::to_string(this->pid);
     std::string path = "/proc/" + pid_str + "/task/" + pid_str + "/pagemap";
     this->pagemapFd = open(path.c_str(), O_RDONLY);

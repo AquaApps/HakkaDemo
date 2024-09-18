@@ -90,6 +90,7 @@ public class IPC extends ContentProvider {
         IPC.observer = observer;
     }
 
+    @Nullable
     public static HakkaService getHakka() {
         return binder;
     }

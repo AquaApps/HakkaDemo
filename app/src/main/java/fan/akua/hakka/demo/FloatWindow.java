@@ -5,6 +5,8 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
+import android.os.IBinder;
+import android.os.RemoteException;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -29,7 +31,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Objects;
 
-public class FloatWindow {
+import fan.akua.hakka.server.ServerConstants;
+import fan.akua.hakka.server.ipc.HakkaService;
+import fan.akua.hakka.server.ipc.IPC;
+
+public class FloatWindow implements IClient {
     private final Context mContext;
     private final WindowManager mWindowManager;
     private WindowManager.LayoutParams mWindowParams;
@@ -71,12 +77,18 @@ public class FloatWindow {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    logLines.add(0, line);
-                    if (logLines.size() == 21) {
-                        logLines.remove(20);
+                    synchronized (logLines) {
+                        logLines.add(0, line);
+                        if (logLines.size() == 21) {
+                            logLines.remove(20);
+                        }
                     }
                     if (logWindow.getVisibility() == View.VISIBLE)
-                        logWindow.post(() -> logWindow.setText(String.join("\n", logLines)));
+                        logWindow.post(() -> {
+                            synchronized (logLines) {
+                                logWindow.setText(String.join("\n", logLines));
+                            }
+                        });
                 }
             } catch (Exception e) {
                 Log.e("simonServer", "crash " + e);
@@ -128,8 +140,19 @@ public class FloatWindow {
         S.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // 改属性
-                progress.show();
+                HakkaService hakka = IPC.getHakka();
+                if (hakka != null) {
+                    hakka.edit1();
+                }
+            }
+        });
+        E.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                HakkaService hakka = IPC.getHakka();
+                if (hakka != null) {
+                    hakka.edit2();
+                }
             }
         });
     }
@@ -171,5 +194,22 @@ public class FloatWindow {
 
         }
         return sbar;
+    }
+
+    @Override
+    public void searchStart() {
+        ServerConstants.log("client searchStart");
+        progress.post(() -> progress.show());
+    }
+
+    @Override
+    public void searchEnd(int size) {
+        ServerConstants.log("client searchEnd");
+        progress.post(() -> progress.hide());
+    }
+
+    @Override
+    public IBinder asBinder() {
+        return null;
     }
 }

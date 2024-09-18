@@ -8,12 +8,12 @@
 #include <sstream>
 #include <cctype>
 #include <unistd.h>
-#include <android/log.h>
 #include <thread>
 #include <future>
 
-#define LOG_TAG "simonServer"
-void parallel_for_each(std::vector<std::pair<ptr_t, ptr_t>>& vec, const std::function<void(const std::pair<ptr_t, ptr_t>&)>& callback) {
+
+void parallel_for_each(std::vector<std::pair<ptr_t, ptr_t>> &vec, std::atomic<bool> &stop_flag,
+                       const std::function<void(const std::pair<ptr_t, ptr_t> &)> &callback) {
     auto num_threads = std::thread::hardware_concurrency(); // 获取硬件并发线程数
     std::vector<std::future<void>> futures;
     size_t length = vec.size();
@@ -26,13 +26,16 @@ void parallel_for_each(std::vector<std::pair<ptr_t, ptr_t>>& vec, const std::fun
         // 创建线程并执行任务
         futures.emplace_back(std::async(std::launch::async, [&, start, end]() {
             for (size_t j = start; j < end; ++j) {
+                if (stop_flag.load()) {
+                    return;
+                }
                 callback(vec[j]);
             }
         }));
     }
 
     // 等待所有线程完成
-    for (auto& fut : futures) {
+    for (auto &fut: futures) {
         fut.get();
     }
 }
@@ -145,19 +148,19 @@ public:
     }
 };
 
-#include <android/log.h>
 
-#define LOG_TAG "simonServer"
-
-void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t, ptr_t>> &dest) {
+void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t, ptr_t>> &dest,
+                                                     std::vector<std::shared_ptr<ProcMap>> &targetMaps) {
     // 拿到所有的Map，过滤留下需要的
-    auto maps = this->process->getAllMaps();
+    if (targetMaps.empty()) {
+        targetMaps = this->process->getAllMaps();
+    }
     std::vector<std::shared_ptr<ProcMap>> rangeMaps;
     auto filter = [this](const std::shared_ptr<ProcMap> &map) {
         if (!map->readable())return false;
         return (this->range & map->range()) == map->range();
     };
-    std::copy_if(maps.begin(), maps.end(), std::back_inserter(rangeMaps), filter);
+    std::copy_if(targetMaps.begin(), targetMaps.end(), std::back_inserter(rangeMaps), filter);
 
     std::list<std::pair<ptr_t, ptr_t>> unMergePages;
     auto pageSize = getpagesize();
@@ -165,14 +168,12 @@ void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t
                   [this, pageSize, &unMergePages](const std::shared_ptr<ProcMap> &map) {
                       for (int i = 0; i < ((map->end() - map->start()) / pageSize); ++i) {
                           auto _start = map->start() + (i * pageSize);
-                          auto entry = process->getPageEntry(start);
-                          if (!entry.present && !this->ignoreMissingPage) {
-                              continue;
-                          }
-                          if (!entry.swapped && !this->ignoreSwappedPage) {
-                              continue;
-                          }
-                          auto pair = std::make_pair(_start, (ptr_t) _start + pageSize);
+
+                          auto entry = process->getPageEntry(map->start());
+                          if (ignoreSwappedPage && entry.swapped)continue;
+                          if (ignoreMissingPage && !entry.present)continue;
+
+                          auto pair = std::make_pair(_start, _start + pageSize);
                           unMergePages.push_back(pair);
                       }
                   });
@@ -201,6 +202,7 @@ void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t
 
 hakka::MemorySearcher::MemorySearcher(std::shared_ptr<hakka::Target> target) {
     this->process = std::move(target);
+    this->stopFlag = false;
 }
 
 void hakka::MemorySearcher::setMemoryRange(i32 _range) {
@@ -217,69 +219,75 @@ void hakka::MemorySearcher::setSearchRange(ptr_t _start, ptr_t _end) {
     this->end = _end;
 }
 
+auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize) -> size_t {
+    std::vector<std::shared_ptr<ProcMap>> empty;
+    return searchValue(expr, bandSize, empty);
+}
+
 #include <android/log.h>
 
 #define LOG_TAG "simonServer"
 
-auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize) -> size_t {
+auto hakka::MemorySearcher::searchValue(const std::string &expr, ptr_t bandSize,
+                                        std::vector<std::shared_ptr<ProcMap>> targetMaps) -> size_t {
     if (!this->results.empty()) {
         this->clearResults();
     }
     auto ranges = parseExpr(expr);
 
-    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "range count %d", ranges.size());
-
     // 遍历所有满足条件的内存页
     std::vector<std::pair<ptr_t, ptr_t>> pages;
-    this->organizeMemoryPageGroups(pages);
-    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "page count %d", pages.size());
-    parallel_for_each(pages, [&bandSize, &ranges, this](const std::pair<ptr_t, ptr_t> &item) {
-        Band band(ranges, item.first);
-        ptr_t _end = item.second;
-        i32 tmp;
-        ptr_t valueSize = sizeof(i32);
+    this->organizeMemoryPageGroups(pages, targetMaps);
 
-        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "page range 0x%llx-0x%llx",
-                            item.first, item.second);
-        // 读取第一个bandSize
-        do {
-            this->process->read(band.index, &tmp, valueSize);
-            for (const auto &valueRange: ranges)
-                if (valueRange.match(tmp)) {
-                    band.pushPtr(valueRange, band.index);
-                    break;
-                }
-            band.index += valueSize;
-        } while (band.index < (item.first + bandSize) && band.index < _end);
+    parallel_for_each(pages, this->stopFlag,
+                      [&bandSize, &ranges, this](const std::pair<ptr_t, ptr_t> &item) {
+                          Band band(ranges, item.first);
+                          ptr_t _end = item.second;
+                          i32 tmp;
+                          ptr_t valueSize = sizeof(i32);
 
-        // bandSize每次移动一个ptr_t
-        while (band.index <= _end && (_end - band.index) >= valueSize) {
-            ptr_t last = band.index - bandSize;
-            this->process->read(last, &tmp, valueSize);
-            for (const auto &valueRange: ranges) {
-                if (valueRange.match(tmp)) {
-                    if (band.isMatch()) band.allToResult(results);
-                    band.popPtr(valueRange, last);
-                    break;
-                }
-            }
+                          __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                                              "page range 0x%llx-0x%llx",
+                                              item.first, item.second);
+                          // 读取第一个bandSize
+                          do {
+                              this->process->read(band.index, &tmp, valueSize);
+                              for (const auto &valueRange: ranges)
+                                  if (valueRange.match(tmp)) {
+                                      band.pushPtr(valueRange, band.index);
+                                      break;
+                                  }
+                              band.index += valueSize;
+                          } while (band.index < (item.first + bandSize) && band.index < _end);
 
-            this->process->read(band.index, &tmp, valueSize);
-            for (const auto &valueRange: ranges)
-                if (valueRange.match(tmp)) {
-                    band.pushPtr(valueRange, band.index);
-                    break;
-                }
-            band.index += valueSize;
-        }
+                          // bandSize每次移动一个ptr_t
+                          while (band.index <= _end && (_end - band.index) >= valueSize) {
+                              ptr_t last = band.index - bandSize;
+                              this->process->read(last, &tmp, valueSize);
+                              for (const auto &valueRange: ranges) {
+                                  if (valueRange.match(tmp)) {
+                                      if (band.isMatch()) {
+                                          __android_log_print(ANDROID_LOG_ERROR, LOG_TAG,
+                                                              "find %d [%llx]", tmp, last);
+                                          band.allToResult(results);
+                                      }
+                                      band.popPtr(valueRange, last);
+                                      break;
+                                  }
+                              }
 
-        //最后一个bandSize如果匹配则将所有地址返回
-        if (band.isMatch()) band.allToResult(results);
-    });
-//    std::for_each(pages.begin(), pages.end(),
-//                  [&bandSize, &ranges, this](const std::pair<ptr_t, ptr_t> &item) {
-//
-//                  });
+                              this->process->read(band.index, &tmp, valueSize);
+                              for (const auto &valueRange: ranges)
+                                  if (valueRange.match(tmp)) {
+                                      band.pushPtr(valueRange, band.index);
+                                      break;
+                                  }
+                              band.index += valueSize;
+                          }
+
+                          //最后一个bandSize如果匹配则将所有地址返回
+                          if (band.isMatch()) band.allToResult(results);
+                      });
     return this->results.size();
 }
 

@@ -50,6 +50,7 @@ android {
 }
 
 dependencies {
+    implementation("com.airbnb.android:lottie:+")
     implementation("com.github.topjohnwu.libsu:core:5.0.4")
     implementation(libs.appcompat)
     implementation(libs.material)

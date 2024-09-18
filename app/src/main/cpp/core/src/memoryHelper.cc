@@ -169,10 +169,10 @@ void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t
                       for (int i = 0; i < ((map->end() - map->start()) / pageSize); ++i) {
                           auto _start = map->start() + (i * pageSize);
 
-                          auto entry = process->getPageEntry(map->start());
-                          if (ignoreSwappedPage && entry.swapped)continue;
-                          if (ignoreMissingPage && !entry.present)continue;
-
+//                          auto entry = process->getPageEntry(map->start());
+//                          if (ignoreSwappedPage && entry.swapped)continue;
+//                          if (ignoreMissingPage && !entry.present)continue;
+//
                           auto pair = std::make_pair(_start, _start + pageSize);
                           unMergePages.push_back(pair);
                       }

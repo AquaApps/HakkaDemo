@@ -2,33 +2,20 @@ package fan.akua.hakka.demo;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
-import android.os.RemoteException;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.TextView;
 
-import androidx.annotation.NonNull;
-
+import com.airbnb.lottie.LottieAnimationView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.topjohnwu.superuser.Shell;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.Objects;
 
 import fan.akua.hakka.server.ServerConstants;
@@ -41,21 +28,25 @@ public class FloatWindow implements IClient {
     private WindowManager.LayoutParams mWindowParams;
 
     private View mFloatLayout;
+    private View animLayout;
 
     private Button i, S, E, A, L;
     private LinearProgressIndicator progress;
-    private TextView logWindow;
-    private final ArrayList<String> logLines = new ArrayList<>();
-    private Thread thread;
+    private LottieAnimationView animView;
 
     public FloatWindow(Context context) {
         this.mContext = context;
+        mContext.setTheme(R.style.Theme_HakkaDemo);
         mWindowManager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
         initFloatWindow();
-        initLogWindow();
+        initAnimWindow();
     }
 
-    private void initLogWindow() {
+    private void initAnimWindow() {
+        LayoutInflater inflater = LayoutInflater.from(mContext);
+        if (inflater == null)
+            return;
+        animLayout = inflater.inflate(R.layout.float_anim, null);
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -65,41 +56,13 @@ public class FloatWindow implements IClient {
                         | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
-
-        logWindow = new TextView(mContext);
-        logWindow.setTextColor(Color.parseColor("#44fefffe"));
-        params.gravity = Gravity.TOP | Gravity.START;
-        mWindowManager.addView(logWindow, params);
-        logWindow.setVisibility(View.INVISIBLE);
-        thread = new Thread(() -> {
-            try {
-                Process process = Runtime.getRuntime().exec("su -c logcat *:S simonServer:E");
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    synchronized (logLines) {
-                        logLines.add(0, line);
-                        if (logLines.size() == 21) {
-                            logLines.remove(20);
-                        }
-                    }
-                    if (logWindow.getVisibility() == View.VISIBLE)
-                        logWindow.post(() -> {
-                            synchronized (logLines) {
-                                logWindow.setText(String.join("\n", logLines));
-                            }
-                        });
-                }
-            } catch (Exception e) {
-                Log.e("simonServer", "crash " + e);
-            }
-        });
-        thread.start();
+        mWindowManager.addView(animLayout, params);
+        animView = animLayout.findViewById(R.id.fuckAnimation);
     }
+
 
     @SuppressLint("InflateParams")
     private void initFloatWindow() {
-        mContext.setTheme(R.style.Theme_HakkaDemo);
         LayoutInflater inflater = LayoutInflater.from(mContext);
         if (inflater == null)
             return;
@@ -131,11 +94,7 @@ public class FloatWindow implements IClient {
         assert progress != null;
         progress.hide();
         i.setOnClickListener(v -> {
-            if (logWindow.getVisibility() == View.VISIBLE) {
-                logWindow.setVisibility(View.INVISIBLE);
-            } else {
-                logWindow.setVisibility(View.VISIBLE);
-            }
+
         });
         S.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -170,9 +129,8 @@ public class FloatWindow implements IClient {
     public void hideFloatWindow() {
         if (mFloatLayout.getParent() != null)
             mWindowManager.removeView(mFloatLayout);
-        if (logWindow.getParent() != null)
-            mWindowManager.removeView(logWindow);
-        thread.interrupt();
+        if (animLayout.getParent() != null)
+            mWindowManager.removeView(animLayout);
     }
 
 
@@ -200,12 +158,27 @@ public class FloatWindow implements IClient {
     public void searchStart() {
         ServerConstants.log("client searchStart");
         progress.post(() -> progress.show());
+        i.post(() -> {
+            i.setClickable(false);
+            S.setClickable(false);
+            E.setClickable(false);
+            A.setClickable(false);
+            L.setClickable(false);
+        });
     }
 
     @Override
     public void searchEnd(int size) {
         ServerConstants.log("client searchEnd");
         progress.post(() -> progress.hide());
+        animView.post(() -> animView.playAnimation());
+        i.post(() -> {
+            i.setClickable(true);
+            S.setClickable(true);
+            E.setClickable(true);
+            A.setClickable(true);
+            L.setClickable(true);
+        });
     }
 
     @Override

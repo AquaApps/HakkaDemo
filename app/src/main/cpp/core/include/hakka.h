@@ -52,7 +52,7 @@ namespace hakka {
         ptr_t _start;
         ptr_t _end;
         hakka::MemoryRange _range = ALL;
-        char _moduleName[128]{0,};
+        char _moduleName[256]{0,};
         bool _readable = false;
         bool _writable = false;
         bool _executable = false;

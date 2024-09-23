@@ -44,7 +44,7 @@ void parallel_for_each(std::vector<std::pair<ptr_t, ptr_t>> &vec, std::atomic<bo
 static ValueRange convertToValueRange(const std::string &input) {
     ValueRange valueRange;
 
-    size_t position = input.find('-');
+    size_t position = input.find('~');
     const char *_start;
     const char *_end;
     if (position != std::string::npos) {

@@ -1,7 +1,7 @@
 package fan.akua.hakka.demo;
 
-//import fan.akua.hakka.Entry; // 导入 Test 类
-parcelable fan.akua.hakka.PlayerEntry;
+//import fan.akua.hakka.PlayerEntry.aidl; // 导入 Test 类
+import fan.akua.hakka.PlayerEntry;
 
 interface IClient {
 
@@ -10,5 +10,5 @@ interface IClient {
 
     void wallHackStart();
     void wallHackEnd();
-    void wallHackLoop(out List<fan.akua.hakka.PlayerEntry> entrys);
+    void wallHackLoop(out List<PlayerEntry> entrys);
 }

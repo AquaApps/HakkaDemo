@@ -8,5 +8,7 @@ public class Hakka {
 
     public static native int edit3();
 
-    public static native int edit4();
+    public static native long wallHack();
+
+    public static native PlayerEntry readEntry(long address);
 }

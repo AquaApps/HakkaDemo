@@ -128,8 +128,8 @@ public class HakkaServer extends Binder implements IHakkaServer {
                 executor.submit(this::edit3);
                 reply.writeNoException();
                 return true;
-            case code_edit4:
-                executor.submit(this::edit4);
+            case code_wallHack:
+                executor.submit(this::wallHack);
                 reply.writeNoException();
                 return true;
         }
@@ -210,7 +210,7 @@ public class HakkaServer extends Binder implements IHakkaServer {
     }
 
     @Override
-    public void edit4() {
+    public void wallHack() {
         if (client != null) {
             handler.post(() -> {
                 try {
@@ -219,14 +219,14 @@ public class HakkaServer extends Binder implements IHakkaServer {
 
                 }
             });
-            int size = Hakka.edit4();
-            handler.post(() -> {
-                try {
-                    if (client != null) client.searchEnd(size);
-                } catch (RemoteException ignored) {
-
-                }
-            });
+            long size = Hakka.wallHack();
+//            handler.post(() -> {
+//                try {
+//                    if (client != null) client.searchEnd(size);
+//                } catch (RemoteException ignored) {
+//
+//                }
+//            });
         }
     }
 }

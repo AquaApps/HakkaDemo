@@ -81,12 +81,12 @@ public final class HakkaService implements IHakkaServer {
     }
 
     @Override
-    public void edit4() {
+    public void wallHack() {
         Parcel _data = Parcel.obtain();
         Parcel _reply = Parcel.obtain();
         try {
             _data.writeInterfaceToken(DESCRIPTION);
-            boolean _status = remote.transact(code_edit4, _data, _reply, 0);
+            boolean _status = remote.transact(code_wallHack, _data, _reply, 0);
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         } finally {

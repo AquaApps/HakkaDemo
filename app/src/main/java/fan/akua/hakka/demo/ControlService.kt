@@ -27,6 +27,14 @@ class ControlService : LifecycleService() {
         override fun searchEnd(size: Int) {
             floatWindow?.searchEnd(size)
         }
+
+        override fun wallHackStart() {
+            TODO("Not yet implemented")
+        }
+
+        override fun wallHackEnd() {
+            TODO("Not yet implemented")
+        }
     }
 
     override fun onCreate() {

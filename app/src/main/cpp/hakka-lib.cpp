@@ -136,3 +136,68 @@ Java_fan_akua_hakka_Hakka_edit4(JNIEnv *env, jclass clazz) {
     attachGame();
 
 }
+
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_fan_akua_hakka_Hakka_wallHack(JNIEnv *env, jclass clazz) {
+    attachGame();
+    auto searcher = hakka::MemorySearcher(process);
+    searcher.setMemoryRange(hakka::MemoryRange::CA);
+    searcher.setPageConfig(true, true);
+    searcher.setSearchRange(0, 0xfffffffff);
+
+    auto start = std::chrono::steady_clock::now();
+
+    auto maps = process->getAllMaps();
+
+    std::vector<std::shared_ptr<hakka::ProcMap>> filterMap;
+    auto filter = [](const std::shared_ptr<hakka::ProcMap> &map) {
+        return strstr(map->moduleName(), "libc_malloc") and map->size() == 0xa00000;
+    };
+    std::copy_if(maps.begin(), maps.end(), std::back_inserter(filterMap), filter);
+
+    searcher.searchValue("-2147478520D;1D;0D", 12, filterMap);
+    auto end = std::chrono::steady_clock::now();
+
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "elapsed time: %f s", elapsed_seconds.count());
+
+    //地图(-58900,58900)
+    auto mySet = searcher.getResults();
+    i32 tmp1, tmp2;
+    ptr_t headPtr;
+    for (const auto &ptr: mySet) {
+        process->read(ptr, &tmp1, sizeof(tmp1));
+        process->read(ptr - 0x8, &tmp2, sizeof(tmp2));
+        if (tmp1 == -2147478520 and tmp2 == 0) {
+            headPtr = ptr;
+            break;
+        }
+    }
+
+//    ptr_t addr = 0;
+//    i32 x, y;
+//    int offset = 0;
+//    while (1) {
+//        process->read(headPtr + offset * 0x20 + 0xc, &addr, sizeof(addr));
+//        if (addr == 0) {
+//            break;
+//        }
+//        process->read(addr - 0x40, &x, sizeof(x));
+//        process->read(addr - 0x40 + 8, &y, sizeof(y));
+//        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "%d (%d,%d)", offset, x, y);
+//        offset++;
+//    }
+    return headPtr;
+}
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_fan_akua_hakka_Hakka_readEntry(JNIEnv *env, jclass clazz, jlong address) {
+    jclass entryClass = env->FindClass("fan/akua/hakka/PlayerEntry");
+
+    jmethodID constructor = env->GetMethodID(entryClass, "<init>", "(JJJ)V");
+
+//    jobject entryObject = env->NewObject(entryClass, constructor, x, y, index);
+//    return entryObject;
+}

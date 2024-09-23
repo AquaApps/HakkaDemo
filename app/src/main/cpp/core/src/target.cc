@@ -132,7 +132,6 @@ auto hakka::Target::getAllMaps() const -> std::vector<std::shared_ptr<hakka::Pro
                 module_name += tokens[i];
             }
         }
-        // todo check length
         auto map = std::make_shared<hakka::ProcMap>(_start, _end,
                                                     readable, writable, executable,
                                                     module_name.c_str());

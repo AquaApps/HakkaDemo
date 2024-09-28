@@ -215,41 +215,36 @@ public class HakkaServer extends Binder implements IHakkaServer {
 
     @Override
     public void wallHack() {
-        if (client != null) {
-            handler.post(() -> {
-                try {
-                    if (client != null) client.wallHackStart();
-                } catch (RemoteException ignored) {
-
-                }
-            });
-
-            new Thread(() -> {
-                final long address = Hakka.wallHack();
-                handler.post(() -> {
+        try {
+            client.wallHackStart();
+            if (client != null) {
+                new Thread(() -> {
+                    final long address = Hakka.wallHack();
                     try {
                         if (client != null) client.wallHackEnd();
                     } catch (RemoteException ignored) {
 
                     }
-                });
-                while (true) {
-                    try {
-                        if (client != null) {
-                            List<PlayerEntry> playerEntries = new ArrayList<>();
-                            for (int i = 0; i < 10; i++)
-                                playerEntries.add(Hakka.readEntry(address + i * 0x20L));
-                            client.wallHackLoop(playerEntries);
+                    while (true) {
+                        try {
+                            if (client != null) {
+                                List<PlayerEntry> playerEntries = new ArrayList<>();
+                                for (int i = 0; i < 10; i++)
+                                    playerEntries.add(Hakka.readEntry(address + i * 0x20L));
+                                client.wallHackLoop(playerEntries);
+                            }
+                        } catch (RemoteException e) {
+                            ServerConstants.log("readEntry error " + e);
                         }
-                    } catch (RemoteException e) {
-                        ServerConstants.log("readEntry error " + e);
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException ignored) {
+                        }
                     }
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ignored) {
-                    }
-                }
-            }).start();
+                }).start();
+            }
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
         }
     }
 }

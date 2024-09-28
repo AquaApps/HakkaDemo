@@ -50,7 +50,7 @@ public class PlayerHead extends View {
         if (playerEntries != null) {
             for (PlayerEntry entry : playerEntries) {
 //                entry.mapRange(400, 200);
-                Log.e("simonServer", "show " + entry.getX() + " " + entry.getY());
+//                Log.e("simonServer", "show " + entry.getX() + " " + entry.getY());
                 canvas.drawPoint(entry.getX(), entry.getY(), paint);
             }
         }

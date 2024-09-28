@@ -37,22 +37,6 @@ ssize_t fdgets(char *buf, const size_t size, int fd) {
     buf[size - 1] = '\0';
     return len;
 }
-//int useNS(int i) {
-//    char buf[32];
-//    int fileP;
-//    int bak;
-//
-//    sprintf(buf, "/proc/%d/ns/mnt", i);
-//    bak = -1;
-//    if (access(buf, R_OK) != -1) {
-//        fileP = __open_2(buf, 0);
-//        if (fileP >= 0) {
-//            bak = setns(fileP, 0);
-//            close(fileP);
-//        }
-//    }
-//    return bak;
-//}
 
 
 /**
@@ -207,7 +191,7 @@ int __attribute__ ((visibility ("default"))) main(int argc, char *argv[]) {
     strcat(path, server_name);
 
     chown(path, 0x7D0, 0x7D0);
-    se::setfilecon(path, "u:object_r:system_server:s0");
+//    se::setfilecon(path, "u:object_r:system_server:s0");
 
     foreach_proc([](pid_t pid) {
         if (pid == getpid()) return;

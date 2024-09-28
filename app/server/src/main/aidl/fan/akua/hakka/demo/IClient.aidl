@@ -7,8 +7,7 @@ interface IClient {
 
     void searchStart() ;
     void searchEnd(int size);
-
     void wallHackStart();
     void wallHackEnd();
-    void wallHackLoop(out List<PlayerEntry> entrys);
+    void wallHackLoop(in List<PlayerEntry> entrys);
 }

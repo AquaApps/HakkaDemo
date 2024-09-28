@@ -4,8 +4,10 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.RemoteException
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LifecycleService
+import fan.akua.hakka.PlayerEntry
 import fan.akua.hakka.server.ipc.IPC
 import fan.akua.hakka.server.ipc.IPC.ServerState
 
@@ -29,11 +31,16 @@ class ControlService : LifecycleService() {
         }
 
         override fun wallHackStart() {
-            TODO("Not yet implemented")
+            floatWindow?.wallHackStart()
         }
 
         override fun wallHackEnd() {
-            TODO("Not yet implemented")
+            floatWindow?.wallHackEnd()
+        }
+
+
+        override fun wallHackLoop(entrys: List<PlayerEntry>?) {
+            floatWindow?.wallHackLoop(entrys)
         }
     }
 

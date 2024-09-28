@@ -23,7 +23,6 @@ public interface IHakkaServer extends IInterface {
 
     void edit3();
 
-
     int code_wallHack = 0x4;
 
     void wallHack();

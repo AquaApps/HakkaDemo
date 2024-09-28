@@ -34,12 +34,14 @@ void attachGame() {
     auto maps = process->getAllMaps();
 
     auto filter = [](const std::shared_ptr<hakka::ProcMap> &map) {
-        return strstr(map->moduleName(), "dataCache.db");
+        return strstr(map->moduleName(), "anon:libc_malloc") and
+               map->end() - map->start() == 0xA00000;
     };
     std::copy_if(maps.begin(), maps.end(), std::back_inserter(targetMaps), filter);
 }
 
-///data/data/com.tencent.tmgp.sgame/files/dataCache.db
+// /data/data/com.tencent.tmgp.sgame/files/dataCache.db
+
 extern "C"
 JNIEXPORT jint JNICALL
 Java_fan_akua_hakka_Hakka_edit1(JNIEnv *env, jclass clazz) {
@@ -134,7 +136,7 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_fan_akua_hakka_Hakka_edit4(JNIEnv *env, jclass clazz) {
     attachGame();
-
+    return 1;
 }
 
 
@@ -153,7 +155,8 @@ Java_fan_akua_hakka_Hakka_wallHack(JNIEnv *env, jclass clazz) {
 
     std::vector<std::shared_ptr<hakka::ProcMap>> filterMap;
     auto filter = [](const std::shared_ptr<hakka::ProcMap> &map) {
-        return strstr(map->moduleName(), "libc_malloc") and map->size() == 0xa00000;
+        return strstr(map->moduleName(), "libc_malloc") and
+               (map->size() == 0x200000 or map->size() == 0x400000);
     };
     std::copy_if(maps.begin(), maps.end(), std::back_inserter(filterMap), filter);
 
@@ -172,23 +175,11 @@ Java_fan_akua_hakka_Hakka_wallHack(JNIEnv *env, jclass clazz) {
         process->read(ptr - 0x8, &tmp2, sizeof(tmp2));
         if (tmp1 == -2147478520 and tmp2 == 0) {
             headPtr = ptr;
+            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "meet");
             break;
         }
     }
 
-//    ptr_t addr = 0;
-//    i32 x, y;
-//    int offset = 0;
-//    while (1) {
-//        process->read(headPtr + offset * 0x20 + 0xc, &addr, sizeof(addr));
-//        if (addr == 0) {
-//            break;
-//        }
-//        process->read(addr - 0x40, &x, sizeof(x));
-//        process->read(addr - 0x40 + 8, &y, sizeof(y));
-//        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "%d (%d,%d)", offset, x, y);
-//        offset++;
-//    }
     return headPtr;
 }
 extern "C"
@@ -197,7 +188,18 @@ Java_fan_akua_hakka_Hakka_readEntry(JNIEnv *env, jclass clazz, jlong address) {
     jclass entryClass = env->FindClass("fan/akua/hakka/PlayerEntry");
 
     jmethodID constructor = env->GetMethodID(entryClass, "<init>", "(JJJ)V");
+    int x;
+//    int y;
+    int z;
+    int index;
+    ptr_t ptr;
+    process->read(address + 0xc, &ptr, sizeof(ptr));
+    process->read(address + 0x4, &index, sizeof(index));
+    process->read(ptr - 0x40, &x, sizeof(x));
+    process->read(ptr - 0x40 + 8, &z, sizeof(z));
 
-//    jobject entryObject = env->NewObject(entryClass, constructor, x, y, index);
-//    return entryObject;
+
+    jobject entryObject = env->NewObject(entryClass, constructor, (jlong) x, (jlong) z,
+                                         (jlong) index);
+    return entryObject;
 }

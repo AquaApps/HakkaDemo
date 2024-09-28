@@ -1,17 +1,20 @@
 package fan.akua.hakka.server.ipc;
 
 import android.os.Binder;
+import android.os.BinderProxy;
 import android.os.Parcel;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 import fan.akua.hakka.server.IHakkaServer;
 
 public final class HakkaService implements IHakkaServer {
-    private final IBinder remote;
+    private final IBinder remote; // BinderProxy
 
     public HakkaService(IBinder remote) {
         this.remote = remote;
+        Log.e("simonFuck",remote.getClass().toString());
     }
 
     @Override
@@ -26,6 +29,7 @@ public final class HakkaService implements IHakkaServer {
         try {
             _data.writeInterfaceToken(DESCRIPTION);
             _data.writeStrongBinder(binder);
+            _data.readStrongBinder();
             boolean _status = remote.transact(code_bindClient, _data, _reply, 0);
         } catch (RemoteException e) {
             throw new RuntimeException(e);

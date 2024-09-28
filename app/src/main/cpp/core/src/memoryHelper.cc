@@ -169,10 +169,11 @@ void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t
                       for (int i = 0; i < ((map->end() - map->start()) / pageSize); ++i) {
                           auto _start = map->start() + (i * pageSize);
 
-//                          auto entry = process->getPageEntry(map->start());
-//                          if (ignoreSwappedPage && entry.swapped)continue;
-//                          if (ignoreMissingPage && !entry.present)continue;
-//
+                          auto entry = process->getPageEntry(map->start());
+
+                          if (ignoreSwappedPage && entry.swapped)continue;
+                          if (ignoreMissingPage && !entry.present)continue;
+
                           auto pair = std::make_pair(_start, _start + pageSize);
                           unMergePages.push_back(pair);
                       }
@@ -183,19 +184,20 @@ void hakka::MemorySearcher::organizeMemoryPageGroups(std::vector<std::pair<ptr_t
 
     // 合并线段
     std::pair<ptr_t, ptr_t> currentLine = lines[0];
-
+    int mergeCount = 0;
     for (size_t i = 1; i < lines.size(); ++i) {
         // 如果当前线段与下一条线段重叠或相连
-        if (currentLine.second >= lines[i].first) {
+        if (currentLine.second >= lines[i].first and mergeCount < 0x40) {
             // 合并线段
             currentLine.second = std::max(currentLine.second, lines[i].second);
+            mergeCount++;
         } else {
             // 将当前线段添加到结果并更新当前线段
             dest.push_back(currentLine);
             currentLine = lines[i];
+            mergeCount = 0;
         }
     }
-
     // 添加最后一条线段
     dest.push_back(currentLine);
 }

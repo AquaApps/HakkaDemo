@@ -9,16 +9,20 @@ import android.os.Looper;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.system.Os;
+import android.util.Log;
 
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import fan.akua.hakka.Hakka;
+import fan.akua.hakka.PlayerEntry;
 import fan.akua.hakka.demo.IClient;
 import fan.akua.hakka.server.hiddenApi.DdmHandleAppNameApi;
 import fan.akua.hakka.server.hiddenApi.PackageManagerApis;
@@ -214,19 +218,38 @@ public class HakkaServer extends Binder implements IHakkaServer {
         if (client != null) {
             handler.post(() -> {
                 try {
-                    if (client != null) client.searchStart();
+                    if (client != null) client.wallHackStart();
                 } catch (RemoteException ignored) {
 
                 }
             });
-            long size = Hakka.wallHack();
-//            handler.post(() -> {
-//                try {
-//                    if (client != null) client.searchEnd(size);
-//                } catch (RemoteException ignored) {
-//
-//                }
-//            });
+
+            new Thread(() -> {
+                final long address = Hakka.wallHack();
+                handler.post(() -> {
+                    try {
+                        if (client != null) client.wallHackEnd();
+                    } catch (RemoteException ignored) {
+
+                    }
+                });
+                while (true) {
+                    try {
+                        if (client != null) {
+                            List<PlayerEntry> playerEntries = new ArrayList<>();
+                            for (int i = 0; i < 10; i++)
+                                playerEntries.add(Hakka.readEntry(address + i * 0x20L));
+                            client.wallHackLoop(playerEntries);
+                        }
+                    } catch (RemoteException e) {
+                        ServerConstants.log("readEntry error " + e);
+                    }
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+            }).start();
         }
     }
 }

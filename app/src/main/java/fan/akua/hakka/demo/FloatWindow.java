@@ -5,7 +5,9 @@ import android.content.Context;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,8 +18,10 @@ import com.airbnb.lottie.LottieAnimationView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Objects;
 
+import fan.akua.hakka.PlayerEntry;
 import fan.akua.hakka.server.ServerConstants;
 import fan.akua.hakka.server.ipc.HakkaService;
 import fan.akua.hakka.server.ipc.IPC;
@@ -29,10 +33,12 @@ public class FloatWindow implements IClient {
 
     private View mFloatLayout;
     private View animLayout;
+    private View playerLayout;
 
     private Button i, S, E, A, L;
     private LinearProgressIndicator progress;
     private LottieAnimationView animView;
+    private PlayerHead playerView;
 
     public FloatWindow(Context context) {
         this.mContext = context;
@@ -40,6 +46,25 @@ public class FloatWindow implements IClient {
         mWindowManager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
         initFloatWindow();
         initAnimWindow();
+        initPlayerWindow();
+    }
+
+    private void initPlayerWindow() {
+        LayoutInflater inflater = LayoutInflater.from(mContext);
+        if (inflater == null)
+            return;
+        playerLayout = inflater.inflate(R.layout.float_player, null);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ?
+                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                        | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                PixelFormat.TRANSLUCENT);
+        mWindowManager.addView(playerLayout, params);
+        playerView = playerLayout.findViewById(R.id.head);
     }
 
     private void initAnimWindow() {
@@ -115,6 +140,16 @@ public class FloatWindow implements IClient {
                 }
             }
         });
+
+        A.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                HakkaService hakka = IPC.getHakka();
+                if (hakka != null) {
+                    hakka.wallHack();
+                }
+            }
+        });
     }
 
     public void showFloatWindow() {
@@ -182,6 +217,21 @@ public class FloatWindow implements IClient {
             A.setClickable(true);
             L.setClickable(true);
         });
+    }
+
+    @Override
+    public void wallHackStart() throws RemoteException {
+
+    }
+
+    @Override
+    public void wallHackEnd() throws RemoteException {
+
+    }
+
+    @Override
+    public void wallHackLoop(List<PlayerEntry> entrys) throws RemoteException {
+        playerView.post(() -> playerView.updatePlayerEntries(entrys));
     }
 
     @Override

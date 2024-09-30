@@ -49,8 +49,8 @@ public class PlayerHead extends View {
         super.onDraw(canvas);
         if (playerEntries != null) {
             for (PlayerEntry entry : playerEntries) {
-//                entry.mapRange(400, 200);
-//                Log.e("simonServer", "show " + entry.getX() + " " + entry.getY());
+                entry.mapRange(190, 170);
+                Log.e("simonServer", "show " + entry.getX() + " " + entry.getY());
                 canvas.drawPoint(entry.getX(), entry.getY(), paint);
             }
         }

@@ -154,33 +154,61 @@ Java_fan_akua_hakka_Hakka_wallHack(JNIEnv *env, jclass clazz) {
     auto maps = process->getAllMaps();
 
     std::vector<std::shared_ptr<hakka::ProcMap>> filterMap;
+
+
+
+
     auto filter = [](const std::shared_ptr<hakka::ProcMap> &map) {
+        if (strstr(map->moduleName(), "libc_malloc") and
+            (map->size() == 0x1800000))
+        {
+            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find moduleName: %s  %llx", map->moduleName(),map->start());
+
+        }
+
         return strstr(map->moduleName(), "libc_malloc") and
-               (map->size() == 0x200000 or map->size() == 0x400000);
+                   (map->size() == 0x1800000);
     };
+
+    //malloc 0x1800000     6f2d600000+3e798->72f4bffd88~72f4bffe20->72f4bffe20~72f4a5ab40
+    //                     7154200000+3e790->71c1bffd88+0x98 = 71c1bffe20 -> 71c1a5a954-0x4 = head
+    //
+
+
     std::copy_if(maps.begin(), maps.end(), std::back_inserter(filterMap), filter);
 
-    searcher.searchValue("-2147478520D;1D;0D", 12, filterMap);
-    auto end = std::chrono::steady_clock::now();
 
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "elapsed time: %f s", elapsed_seconds.count());
+    ptr_t target_address = 0;
+    target_address = filterMap.at(0)->start();
 
-    //地图(-58900,58900)
-    auto mySet = searcher.getResults();
-    i32 tmp1, tmp2;
-    ptr_t headPtr;
-    for (const auto &ptr: mySet) {
-        process->read(ptr, &tmp1, sizeof(tmp1));
-        process->read(ptr - 0x8, &tmp2, sizeof(tmp2));
-        if (tmp1 == -2147478520 and tmp2 == 0) {
-            headPtr = ptr;
-            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "meet");
-            break;
-        }
-    }
 
-    return headPtr;
+//    searcher.searchValue("-2147478520D;1D;0D", 12, filterMap);
+//    auto end = std::chrono::steady_clock::now();
+//
+//    std::chrono::duration<double> elapsed_seconds = end - start;
+//    __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "elapsed time: %f s", elapsed_seconds.count());
+//
+//    //地图(-58900,58900)
+//    auto mySet = searcher.getResults();
+//    i32 tmp1, tmp2;
+//    ptr_t headPtr;
+//    for (const auto &ptr: mySet) {
+//        process->read(ptr, &tmp1, sizeof(tmp1));
+//        process->read(ptr - 0x8, &tmp2, sizeof(tmp2));
+//        if (tmp1 == -2147478520 and tmp2 == 0) {
+//            headPtr = ptr;
+//            __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find [%llx] ", ptr);
+//            break;
+//        }
+//    }
+
+    ptr_t header_ptr;
+    ptr_t tmp;
+    process->read(target_address+0x3e798,&tmp,sizeof(tmp));
+    process->read(tmp+0x98,&header_ptr,sizeof(header_ptr));
+
+
+    return (jlong)header_ptr;
 }
 extern "C"
 JNIEXPORT jobject JNICALL
@@ -193,13 +221,21 @@ Java_fan_akua_hakka_Hakka_readEntry(JNIEnv *env, jclass clazz, jlong address) {
     int z;
     int index;
     ptr_t ptr;
-    process->read(address + 0xc, &ptr, sizeof(ptr));
-    process->read(address + 0x4, &index, sizeof(index));
-    process->read(ptr - 0x40, &x, sizeof(x));
-    process->read(ptr - 0x40 + 8, &z, sizeof(z));
+
+    process->read(address + 0x8, &ptr, sizeof(ptr));
+    process->read(address , &index, sizeof(index));
+    jobject entryObject;
+    if (ptr == 0) {
+        entryObject = env->NewObject(entryClass, constructor, (jlong) -1, (jlong) 0, (jlong) 0);
+    } else {
+        process->read(ptr - 0x40, &x, sizeof(x));
+        process->read(ptr - 0x40 + 8, &z, sizeof(z));
+
+        __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "find idx:%d  (%d,%d)", index, x, z);
+
+        entryObject = env->NewObject(entryClass, constructor, (jlong) index, (jlong) x, (jlong) z);
+    }
 
 
-    jobject entryObject = env->NewObject(entryClass, constructor, (jlong) x, (jlong) z,
-                                         (jlong) index);
     return entryObject;
 }

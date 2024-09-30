@@ -127,7 +127,7 @@ public class FloatWindow implements IClient {
             public void onClick(View v) {
                 HakkaService hakka = IPC.getHakka();
                 if (hakka != null) {
-                    hakka.edit1();
+                    //hakka.edit1();
                 }
             }
         });
@@ -136,7 +136,7 @@ public class FloatWindow implements IClient {
             public void onClick(View v) {
                 HakkaService hakka = IPC.getHakka();
                 if (hakka != null) {
-                    hakka.edit2();
+                    //hakka.edit2();
                 }
             }
         });

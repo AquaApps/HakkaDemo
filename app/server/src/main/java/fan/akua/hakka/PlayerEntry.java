@@ -22,9 +22,11 @@ public class PlayerEntry implements Parcelable {
         y = in.readLong();
     }
 
+
+
     public PlayerEntry mapRange(int dis, int base) {
         this.x = mapRange(this.x, dis) + base;
-        this.y = mapRange(this.y, dis) + base;
+        this.y =  - mapRange(this.y, dis) + base;
         return this;
     }
 

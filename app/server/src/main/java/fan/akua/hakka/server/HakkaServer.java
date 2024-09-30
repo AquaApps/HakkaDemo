@@ -229,15 +229,23 @@ public class HakkaServer extends Binder implements IHakkaServer {
                         try {
                             if (client != null) {
                                 List<PlayerEntry> playerEntries = new ArrayList<>();
-                                for (int i = 0; i < 10; i++)
-                                    playerEntries.add(Hakka.readEntry(address + i * 0x20L));
+                                PlayerEntry playerEntry = null;
+                                int i =0;
+                                while(true){
+                                    if(address==0)break;
+                                    playerEntry = Hakka.readEntry(address + i * 0x20L);
+                                    if(playerEntry.getIndex()==-1)break;
+                                    playerEntries.add(playerEntry);
+                                    i++;
+                                }
+
                                 client.wallHackLoop(playerEntries);
                             }
                         } catch (RemoteException e) {
                             ServerConstants.log("readEntry error " + e);
                         }
                         try {
-                            Thread.sleep(1000);
+                            Thread.sleep(17);
                         } catch (InterruptedException ignored) {
                         }
                     }
